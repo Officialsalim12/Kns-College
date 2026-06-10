@@ -27,6 +27,7 @@ AGENTS.md
 
 # Logs
 logs/
+iisnode/
 *.log
 
 # Build outputs

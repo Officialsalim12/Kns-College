@@ -1,10 +1,4 @@
-/**
- * Chatbot functionality for KNS College website
- * Handles FAQ-style question answering
- */
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Complete Course Database - All Available Courses
     const courseDatabase = {
         diplomas: [
             { name: 'Diploma in Cybersecurity', keywords: ['cybersecurity', 'cyber security', 'security', 'isc2', 'cc'], type: 'diploma', duration: '2 Years', mode: 'Online / Hybrid' },
@@ -38,26 +32,26 @@ document.addEventListener('DOMContentLoaded', function() {
         ]
     };
 
-    // Function to check if a course exists
+    // course lookup
     function findCourse(courseQuery) {
         const lowerQuery = courseQuery.toLowerCase().trim();
         const allCourses = [...courseDatabase.diplomas, ...courseDatabase.certificates];
         
-        // First, try exact name match
+        // exact name
         for (const course of allCourses) {
             if (course.name.toLowerCase() === lowerQuery) {
                 return course;
             }
         }
         
-        // Then try partial name match
+        // partial name
         for (const course of allCourses) {
             if (course.name.toLowerCase().includes(lowerQuery) || lowerQuery.includes(course.name.toLowerCase())) {
                 return course;
             }
         }
         
-        // Then try keyword matching
+        // keywords
         let bestMatch = null;
         let maxScore = 0;
         
@@ -77,9 +71,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return bestMatch;
     }
 
-    // Comprehensive FAQ Database  Questions and Answers
+    // FAQ data
     const faqDatabase = [
-        // Admissions & Application Process
+        // admissions
         {
             keywords: ['admission', 'admissions', 'apply', 'application', 'enroll', 'enrollment', 'how to apply', 'application process', 'register', 'registration', 'sign up', 'join', 'become student'],
             question: 'How do I apply for admission?',
@@ -101,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
             answer: 'Yes, there is an enrollment fee of Le1,000. This fee is required to secure your place in the programme. For detailed information about all fees, please contact our admissions office at admission@kns.edu.sl or +232 79 422 442.'
         },
         
-        // programmes & Courses
+        // programmes
         {
             keywords: ['programme', 'programmes', 'programme', 'programmes', 'course', 'courses', 'what programmes', 'what courses', 'offer', 'available', 'study', 'studies'],
             question: 'What programmes do you offer?',
@@ -168,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
             answer: 'Yes! We offer a Certificate programme in Data Analyst (12 weeks). Learn data analysis, visualization, statistical analysis, reporting, and master tools like Excel, SQL, and data visualization platforms. Available online or offline.'
         },
         
-        // Fees & Payment
+        // fees
         {
             keywords: ['fee', 'fees', 'cost', 'price', 'pricing', 'tuition', 'how much', 'payment', 'pay', 'costs', 'expense', 'expensive', 'affordable'],
             question: 'What are the fees?',
@@ -180,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
             answer: 'For information about payment plans, installments, scholarships, or financial assistance, please contact our admissions office directly at admission@kns.edu.sl or +232 79 422 442. We understand that financing education is important and are happy to discuss options with you.'
         },
         
-        // Learning Modes & Schedule
+        // learning modes
         {
             keywords: ['online', 'distance', 'remote', 'elearning', 'virtual', 'online learning', 'study online'],
             question: 'Do you offer online learning?',
@@ -202,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
             answer: 'Class schedules vary by programme and learning mode. We offer flexible scheduling including evening and weekend options for working professionals. Online programmes allow you to study at your own pace. Contact us at admission@kns.edu.sl or +232 79 422 442 for specific schedule information for your programme of interest.'
         },
         
-        // Certifications
+        // certifications
         {
             keywords: ['certification', 'certificate', 'certified', 'credential', 'badge', 'certiport', 'cisco', 'microsoft', 'exam', 'voucher'],
             question: 'What certifications are included?',
@@ -249,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
             answer: 'We partner with Credly to issue a digital badge for every qualification you earn. These verifiable digital credentials allow you to share and showcase your skills with employers and on professional networks like LinkedIn. Digital badges give you a modern, competitive edge in the job market.'
         },
         
-        // Location & Facilities
+        // location
         {
             keywords: ['location', 'address', 'where', 'campus', 'office', 'find', 'directions', 'map'],
             question: 'Where is KNS College located?',
@@ -261,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
             answer: 'KNS College has modern facilities including computer labs, testing centers for Pearson VUE and Certiport exams, and learning resources. As an authorized testing center, we provide a supportive environment for both training and certification exams. Contact us to learn more about our facilities.'
         },
         
-        // Contact & Support
+        // contact
         {
             keywords: ['contact', 'phone', 'email', 'whatsapp', 'reach', 'get in touch', 'call', 'message', 'support'],
             question: 'How can I contact you?',
@@ -280,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
         {
             keywords: ['website', 'url', 'web address', 'online', 'visit'],
             question: 'What is your website?',
-            answer: 'Our website is www.kns.sl. You can find detailed information about our programmes, admissions process, and contact details there. You can also apply online at webportal.kns.edu.sl/register.'
+            answer: 'Our website is kns.edu.sl. You can find detailed information about our programmes, admissions process, and contact details there. You can also apply online at webportal.kns.edu.sl/register.'
         },
         {
             keywords: ['help', 'support', 'assistance', 'need help', 'question', 'inquiry', 'information'],
@@ -288,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
             answer: 'We\'re here to help! You can contact us via Phone/WhatsApp at +232 79 422 442, Email at admission@kns.edu.sl, or visit our Contact page. Our admissions team is ready to assist with any questions about programmes, admissions, fees, or any other inquiries.'
         },
         
-        // Recognition & Accreditation
+        // accreditation
         {
             keywords: ['recognition', 'accredited', 'accreditation', 'ministry', 'mocti', 'champion', 'recognized', 'official', 'legitimate'],
             question: 'Is KNS College recognized?',
@@ -300,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
             answer: 'KNS College is recognized by the Ministry of Communication, Technology & Innovation (MoCTI) as the "Digital Skills Champion 2025." We are authorized testing centers for Pearson VUE and Certiport, and our programmes include globally recognized certifications from partners like Cisco, (ISC)², PMI, and Microsoft.'
         },
         
-        // Career & Employment
+        // careers
         {
             keywords: ['job', 'career', 'employment', 'placement', 'opportunities', 'work', 'employment opportunities', 'job placement', 'career services'],
             question: 'What career opportunities are available?',
@@ -312,14 +306,14 @@ document.addEventListener('DOMContentLoaded', function() {
             answer: 'While we don\'t guarantee job placement, our programmes are designed to prepare you for highdemand careers. We provide globally recognized certifications that employers value, careerfocused training, and industryintegrated learning. Many of our graduates find success in their chosen fields. Contact us to learn more about career support services.'
         },
         
-        // Corporate Training
+        // corporate training
         {
             keywords: ['corporate', 'corporate training', 'business training', 'company training', 'employee training', 'organization training'],
             question: 'Do you offer corporate training?',
             answer: 'Yes! We offer Corporate Training programmes for businesses and organizations. Our corporate training can be customized to meet your organization\'s specific needs. Contact us at training@kns.edu.sl or +232 79 422 442 to discuss your corporate training requirements.'
         },
         
-        // General Information
+        // general
         {
             keywords: ['about', 'who are you', 'what is kns', 'college', 'institution', 'school', 'university'],
             question: 'What is KNS College?',
@@ -367,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     ];
 
-    // Chatbot elements
+    // DOM refs
     const chatbotToggle = document.getElementById('chatbotToggle');
     const chatbotWidget = document.getElementById('chatbotWidget');
     const chatbotMinimize = document.getElementById('chatbotMinimize');
@@ -377,20 +371,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatSendBtn = document.getElementById('chatSendBtn');
     const whatsappBtn = document.getElementById('whatsappSupportBtn');
 
-    // WhatsApp number (from the website)
-    const whatsappNumber = '23279422442'; // +232 79 422 442
+    // WhatsApp
+    const whatsappNumber = '23279422442';
     const whatsappMessage = encodeURIComponent('Hello! I need help with KNS College.');
 
-    // Initialize chatbot
+    // init chat
     function initChatbot() {
-        // Add welcome message
         addMessage('bot', 'Hello! I\'m here to help answer your questions about KNS College. What would you like to know?');
-        
-        // Add quick question buttons
         addQuickQuestions();
     }
 
-    // Save message to database via API
+    // persist message
     async function saveMessage(sender, message) {
         try {
             const sessionId = typeof getSessionId !== 'undefined' ? getSessionId() : 'session_' + Date.now();
@@ -412,33 +403,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Failed to save message:', response.statusText);
             }
         } catch (error) {
-            // Silently fail - don't interrupt user experience if API is unavailable
+            // API down — skip save
             console.error('Error saving message to database:', error);
         }
     }
 
-    // Add message to chat
+    // render message
     function addMessage(sender, text) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `chat-message ${sender}`;
         
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
-        // Convert line breaks to HTML breaks for better formatting
         const formattedText = text.replace(/\n/g, '<br>');
         messageContent.innerHTML = formattedText;
         
         messageDiv.appendChild(messageContent);
         chatMessages.appendChild(messageDiv);
         
-        // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        
-        // Save message to database (non-blocking)
         saveMessage(sender, text);
     }
 
-    // Add quick question buttons
+    // quick question buttons
     function addQuickQuestions() {
         const quickQuestions = [
             'How do I apply?',
@@ -466,11 +453,11 @@ document.addEventListener('DOMContentLoaded', function() {
         chatMessages.appendChild(quickQuestionsDiv);
     }
 
-    // Improved matching algorithm with better scoring
+    // FAQ matching
     function findBestMatch(userMessage) {
         const lowerMessage = userMessage.toLowerCase().trim();
         
-        // Remove common question words for better matching
+        // strip filler words
         const cleanedMessage = lowerMessage
             .replace(/\b(what|where|when|who|why|how|is|are|do|does|can|could|will|would|should|tell|give|show|explain|i|me|my|you|your|we|our|the|a|an|to|for|of|in|on|at|with|about)\b/g, '')
             .replace(/\s+/g, ' ')
@@ -489,9 +476,9 @@ document.addEventListener('DOMContentLoaded', function() {
             faq.keywords.forEach(keyword => {
                 const lowerKeyword = keyword.toLowerCase();
                 
-                // Exact phrase match (highest priority)
+                // exact phrase
                 if (lowerMessage.includes(lowerKeyword) || cleanedMessage.includes(lowerKeyword)) {
-                    // Check for exact word boundaries for better matching
+                    // word boundary
                     const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
                     if (regex.test(lowerMessage) || regex.test(cleanedMessage)) {
                         score += 10; // High score for exact match
@@ -503,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 
-                // Check for partial word matches
+                // partial words
                 if (lowerKeyword.length > 3) {
                     const keywordParts = lowerKeyword.split(/\s+/);
                     keywordParts.forEach(part => {
@@ -514,12 +501,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            // Bonus for multiple keyword matches
+            // multi-keyword bonus
             if (keywordMatches > 1) {
                 score += keywordMatches * 2;
             }
             
-            // Check if question text matches
+            // question text
             const lowerQuestion = faq.question.toLowerCase();
             const questionWords = lowerQuestion.split(/\s+/).filter(w => w.length > 3);
             questionWords.forEach(word => {
@@ -540,18 +527,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Prioritize exact matches over partial matches
+        // prefer exact matches
         if (exactMatches.length > 0) {
             exactMatches.sort((a, b) => b.score - a.score);
             return exactMatches[0].faq;
         }
         
-        // Return best partial match if score is reasonable
+        // partial match threshold
         if (maxScore >= 5) {
             return bestMatch;
         }
         
-        // If no good match, try fuzzy matching for common questions
+        // greetings / small talk
         const commonQuestions = {
             'hello': 'Greeting',
             'hi': 'Greeting',
@@ -583,11 +570,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
     }
 
-    // Function to extract course query from user message
+    // parse course question
     function extractCourseQuery(message) {
         const lowerMessage = message.toLowerCase();
         
-        // Patterns that indicate course availability queries
+        // availability patterns
         const availabilityPatterns = [
             /do you (offer|have|provide|teach).*?(course|programme|diploma|certificate)/i,
             /is.*?(available|offered|taught)/i,
@@ -598,10 +585,9 @@ document.addEventListener('DOMContentLoaded', function() {
             /what.*?(course|programme|diploma|certificate).*?(do you|offer|have)/i
         ];
         
-        // Check if message contains availability query patterns
         const isAvailabilityQuery = availabilityPatterns.some(pattern => pattern.test(message));
         
-        // Also check if message contains course-related keywords directly
+        // keyword fallback
         const allCourses = [...courseDatabase.diplomas, ...courseDatabase.certificates];
         let foundCourseKeyword = false;
         for (const course of allCourses) {
@@ -618,15 +604,13 @@ document.addEventListener('DOMContentLoaded', function() {
             return null;
         }
         
-        // Try to find course names in the message first
+        // name / keyword scan
         for (const course of allCourses) {
             const courseNameLower = course.name.toLowerCase();
-            // Check if full course name or significant portion is in message
             if (lowerMessage.includes(courseNameLower) || 
                 (courseNameLower.length > 15 && lowerMessage.includes(courseNameLower.substring(0, 15)))) {
                 return course.name;
             }
-            // Check keywords
             for (const keyword of course.keywords) {
                 if (lowerMessage.includes(keyword.toLowerCase())) {
                     return course.name;
@@ -634,13 +618,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Extract potential course name by removing common question words
+        // strip question words
         let cleaned = message
             .replace(/\b(do|you|offer|have|provide|teach|is|are|can|i|study|learn|take|enroll|available|offered|taught|course|programme|diploma|certificate|in|for|about|the|a|an|tell|me|what|which)\b/gi, ' ')
             .replace(/\s+/g, ' ')
             .trim();
         
-        // If cleaned message is meaningful, return it
         if (cleaned.length >= 3) {
             return cleaned;
         }
@@ -648,20 +631,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
     }
 
-    // Handle user message
+    // on user send
     function handleUserMessage(message) {
         if (!message.trim()) return;
 
-        // Add user message
         addMessage('user', message);
 
-        // Remove quick questions if they exist
+        // clear quick picks
         const quickQuestions = chatMessages.querySelector('.quick-questions');
         if (quickQuestions) {
             quickQuestions.remove();
         }
 
-        // First, check if user is asking about a specific course availability
+        // course availability first
         const courseQuery = extractCourseQuery(message);
         if (courseQuery) {
             const course = findCourse(courseQuery);
@@ -670,12 +652,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     const courseType = course.type === 'diploma' ? 'Diploma programme' : 'Certificate programme';
                     addMessage('bot', `Yes! We offer ${course.name}. This is a ${courseType} with a duration of ${course.duration} and available in ${course.mode} mode. Would you like more details about this programme?`);
                     setTimeout(() => {
-                        addMessage('bot', `💡 You can visit our programmes page or contact us at +232 79 422 442 for detailed information about ${course.name}.`);
+                        addMessage('bot', `Visit our programmes page or call +232 79 422 442 for more on ${course.name}.`);
                     }, 1000);
                 }, 500);
                 return;
             } else {
-                // Course not found
+                // no course match
                 setTimeout(() => {
                     addMessage('bot', `I couldn't find a course matching "${courseQuery}" in our current offerings.`);
                     setTimeout(() => {
@@ -692,30 +674,29 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Find best match
         const match = findBestMatch(message);
 
-        // Simulate typing delay
+        // typing delay
         setTimeout(() => {
             if (match) {
                 addMessage('bot', match.answer);
                 
-                // Add helpful follow-up suggestions for common topics
+                // follow-up hints
                 if (match.keywords.some(k => ['admission', 'apply', 'enroll'].includes(k.toLowerCase()))) {
                     setTimeout(() => {
-                        addMessage('bot', '💡 Tip: You can also visit our Admissions page or contact us directly at +232 79 422 442 for personalized assistance with your application.');
+                        addMessage('bot', 'You can also visit Admissions or call +232 79 422 442 if you want help with your application.');
                     }, 1000);
                 } else if (match.keywords.some(k => ['programme', 'course', 'diploma', 'certificate'].includes(k.toLowerCase()))) {
                     setTimeout(() => {
-                        addMessage('bot', '💡 Tip: Visit our programmes page to see detailed information about all available programmes, including duration, certifications, and learning modes.');
+                        addMessage('bot', 'Our programmes page has duration, certifications, and learning modes for everything we offer.');
                     }, 1000);
                 } else if (match.keywords.some(k => ['fee', 'cost', 'price'].includes(k.toLowerCase()))) {
                     setTimeout(() => {
-                        addMessage('bot', '💡 Tip: For detailed fee information for your specific programme, please contact our admissions office at admission@kns.edu.sl or +232 79 422 442.');
+                        addMessage('bot', 'For fees on a specific programme, email admission@kns.edu.sl or call +232 79 422 442.');
                     }, 1000);
                 }
             } else {
-                // Provide more helpful response when no match found
+                // no FAQ match
                 addMessage('bot', 'I\'m sorry, I couldn\'t find a specific answer to that question. Here are some topics I can help with:');
                 
                 setTimeout(() => {
@@ -723,10 +704,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 800);
                 
                 setTimeout(() => {
-                    addMessage('bot', 'For more detailed assistance, please contact us:\n📞 Phone/WhatsApp: +232 79 422 442\n📧 Email: admission@kns.edu.sl\n\nOr try rephrasing your question!');
+                    addMessage('bot', 'Call or WhatsApp +232 79 422 442, or email admission@kns.edu.sl. You can also try rephrasing your question.');
                 }, 1600);
                 
-                // Add quick questions again
+                // quick picks again
                 setTimeout(() => {
                     addQuickQuestions();
                 }, 2400);
@@ -734,61 +715,57 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 500);
     }
 
-    // Function to clear chat history
+    // clear chat
     function clearChatHistory() {
         if (chatMessages) {
             chatMessages.innerHTML = '';
         }
     }
 
-    // Function to start new conversation
+    // new conversation
     function startNewConversation() {
         clearChatHistory();
         initChatbot();
     }
 
-    // Toggle chatbot
+    // open widget
     if (chatbotToggle) {
         chatbotToggle.addEventListener('click', function() {
-            // Remove minimized state if it exists
             chatbotWidget.classList.remove('minimized');
             chatbotWidget.classList.add('active');
             chatbotToggle.style.display = 'none';
-            // Hide WhatsApp button when chatbot opens
             if (whatsappBtn) {
                 whatsappBtn.style.display = 'none';
             }
             
-            // If chat is empty, initialize it
+            // first open
             if (chatMessages && chatMessages.children.length === 0) {
                 initChatbot();
             }
         });
     }
 
-    // Minimize chatbot (preserves chat history)
+    // minimize — keep history
     if (chatbotMinimize) {
         chatbotMinimize.addEventListener('click', function(e) {
-            e.stopPropagation(); // Prevent header click event
+            e.stopPropagation();
             chatbotWidget.classList.add('minimized');
             chatbotWidget.classList.remove('active');
-            // Show toggle button
             if (chatbotToggle) {
                 chatbotToggle.style.display = 'flex';
             }
-            // Show WhatsApp button when minimized
             if (whatsappBtn) {
                 whatsappBtn.style.display = 'flex';
             }
         });
     }
 
-    // Restore from minimized state when clicking header
+    // restore from header click
     if (chatbotWidget) {
         const chatbotHeader = chatbotWidget.querySelector('.chatbot-header');
         if (chatbotHeader) {
             chatbotHeader.addEventListener('click', function(e) {
-                // Only restore if clicking on header itself, not buttons
+                // header only, not buttons
                 if (e.target === chatbotHeader || e.target.closest('.chatbot-header-info')) {
                     if (chatbotWidget.classList.contains('minimized')) {
                         chatbotWidget.classList.remove('minimized');
@@ -805,23 +782,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Close chatbot (clears chat history and starts new conversation)
+    // close + reset chat
     if (chatbotClose) {
         chatbotClose.addEventListener('click', function(e) {
-            e.stopPropagation(); // Prevent header click event
+            e.stopPropagation();
             chatbotWidget.classList.remove('active');
             chatbotWidget.classList.remove('minimized');
             chatbotToggle.style.display = 'flex';
-            // Show WhatsApp button when chatbot closes
             if (whatsappBtn) {
                 whatsappBtn.style.display = 'flex';
             }
-            // Clear chat history and start new conversation
             startNewConversation();
         });
     }
 
-    // Send message on button click
+    // send button
     if (chatSendBtn) {
         chatSendBtn.addEventListener('click', function() {
             const message = chatInput.value.trim();
@@ -832,7 +807,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Send message on Enter key
+    // send on Enter
     if (chatInput) {
         chatInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -845,7 +820,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // WhatsApp button click
+    // WhatsApp link
     if (whatsappBtn) {
         whatsappBtn.addEventListener('click', function() {
             const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
@@ -853,7 +828,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initialize chatbot when widget is opened
+    // lazy init on open
     if (chatbotWidget) {
         const observer = new MutationObserver(function(mutations) {
             if (chatbotWidget.classList.contains('active') && chatMessages.children.length === 0) {

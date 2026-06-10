@@ -454,7 +454,7 @@
                     <ul class="footer-links">
                         <li>Phone / WhatsApp: +232 79 422 442</li>
                         <li>Email: admission@kns.edu.sl</li>
-                        <li>Website: www.kns.sl</li>
+                        <li>Website: kns.edu.sl</li>
                         <li>Location: 18 Dundas Street, Freetown, Sierra Leone</li>
                     </ul>
                 </div>
@@ -603,7 +603,7 @@
                     await paymentResponse.json().catch(() => ({}));
                 }
             } catch (error) {
-                /* continue with payment flow */
+                /* save failed — still open monime */
             }
 
             const monimeEndpoint = (typeof CONFIG !== 'undefined' && CONFIG.MONIME_ENDPOINT) 

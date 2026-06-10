@@ -1,9 +1,10 @@
 {
   "name": "kns-college-website",
   "version": "1.0.0",
-  "description": "KNS College website with database backend for messages and contacts",
+  "description": "KNS College website and API",
   "main": "server.js",
   "scripts": {
+    "build": "node -e \"console.log('no build step')\"",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "setup-sender": "node setup-sender.js",

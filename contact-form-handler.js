@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     window.location.hostname !== '';
                 const isSameOrigin = apiBaseUrl === window.location.origin;
                 
-                // If in production and same-origin, use PRODUCTION_API_URL instead
                 if (isProduction && isSameOrigin) {
                     if (typeof CONFIG !== 'undefined' && CONFIG.PRODUCTION_API_URL) {
                         apiBaseUrl = CONFIG.PRODUCTION_API_URL;

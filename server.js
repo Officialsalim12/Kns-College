@@ -1,11 +1,5 @@
-/**
- * KNS College Backend Server
- * Handles API requests for messages, contacts, and enrollments
- * Uses Supabase as the database backend
- */
+// main API server — express, supabase, sendgrid, monime checkout
 
-// Load environment variables
-// Try .env.local first (for local development), then .env, then use system env vars (for production)
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -15,8 +9,6 @@ if (fs.existsSync(path.join(__dirname, '.env.local'))) {
 } else if (fs.existsSync(path.join(__dirname, '.env'))) {
     require('dotenv').config({ path: '.env' });
 } else {
-    // In production (Render), environment variables are already set
-    // dotenv will use process.env if no file is found
     require('dotenv').config();
 }
 
@@ -28,17 +20,19 @@ const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const IS_IISNODE = Boolean(process.env.IISNODE_VERSION);
 
-// Initialize Supabase client
+if (IS_IISNODE) {
+    app.set('trust proxy', 1);
+}
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-/** Monime hosted checkout — https://docs.monime.io/developer-resources/api-basics */
 const MONIME_ACCESS_TOKEN = (process.env.MONIME_ACCESS_TOKEN || '').trim();
 const MONIME_SPACE_ID = (process.env.MONIME_SPACE_ID || '').trim();
 const MONIME_API_BASE = (process.env.MONIME_API_BASE_URL || 'https://api.monime.io').replace(/\/+$/, '');
 const MONIME_VERSION = (process.env.MONIME_VERSION || 'caph.2025-08-23').trim();
-/** When true, reject checkout if token is mon_test_* (use on production for real payments only). */
 const MONIME_REQUIRE_LIVE_TOKEN = process.env.MONIME_REQUIRE_LIVE_TOKEN === 'true';
 
 function getMonimeTokenMode() {
@@ -50,14 +44,11 @@ function getMonimeTokenMode() {
 
 const MONIME_TOKEN_MODE = getMonimeTokenMode();
 
+const KNS_SITE_ORIGINS = ['https://kns.edu.sl', 'https://www.kns.edu.sl'];
+
 function buildMonimeCheckoutAllowedOrigins() {
-    const defaults = [
-        'https://www.kns.edu.sl',
-        'https://kns.edu.sl',
-        'http://www.kns.edu.sl',
-        'http://kns.edu.sl',
-        'https://www.kns.sl',
-        'https://kns.sl',
+    const productionDefaults = KNS_SITE_ORIGINS.slice();
+    const devExtras = [
         'http://localhost:3000',
         'http://127.0.0.1:3000',
         'http://localhost:5500',
@@ -66,6 +57,8 @@ function buildMonimeCheckoutAllowedOrigins() {
         'http://127.0.0.1:5173',
         'https://kns-college-website.onrender.com'
     ];
+    const isProduction = process.env.NODE_ENV === 'production';
+    const defaults = isProduction ? productionDefaults : productionDefaults.concat(devExtras);
     const raw = process.env.MONIME_ALLOWED_CHECKOUT_ORIGINS;
     const list = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : defaults;
     const set = new Set();
@@ -73,7 +66,7 @@ function buildMonimeCheckoutAllowedOrigins() {
         try {
             set.add(new URL(item).origin);
         } catch (e) {
-            /* ignore invalid entries */
+            /* skip bad origins */
         }
     });
     return set;
@@ -84,29 +77,28 @@ const monimeCheckoutAllowedOrigins = buildMonimeCheckoutAllowedOrigins();
 if (MONIME_ACCESS_TOKEN) {
     if (MONIME_TOKEN_MODE === 'test' && process.env.NODE_ENV === 'production') {
         console.warn(
-            '⚠️  Monime: MONIME_ACCESS_TOKEN is a TEST token while NODE_ENV=production. Use a live token (mon_…) for real customer payments. See https://docs.monime.io/developer-resources/api-basics'
+            'Monime: test token in production — use a live mon_* token for real payments'
         );
     }
     if (MONIME_TOKEN_MODE === 'test' && MONIME_REQUIRE_LIVE_TOKEN) {
         console.error(
-            '✗ Monime: MONIME_REQUIRE_LIVE_TOKEN=true but token is mon_test_. Set a live token or disable MONIME_REQUIRE_LIVE_TOKEN for sandbox.'
+            'Monime: MONIME_REQUIRE_LIVE_TOKEN is on but token is mon_test_'
         );
     }
     if (MONIME_TOKEN_MODE === 'live') {
-        console.log('  Monime: LIVE mode — checkout sessions move real funds (per Monime Space settings).');
+        console.log(' Monime: live token');
     } else if (MONIME_TOKEN_MODE === 'test') {
-        console.log('  Monime: TEST mode — sandbox only (mon_test_ token).');
+        console.log(' Monime: test token (sandbox)');
     } else if (MONIME_TOKEN_MODE === 'unknown') {
-        console.warn('  Monime: token does not start with mon_ or mon_test_; verify token format with Monime.');
+        console.warn('  Monime: token format looks wrong — expected mon_* or mon_test_*');
     }
 }
 
-// Log environment status (without exposing sensitive values)
 console.log('Environment check:');
-console.log(`  SUPABASE_URL: ${supabaseUrl ? '✓ Set' : '✗ Missing'}`);
-console.log(`  SUPABASE_ANON_KEY: ${supabaseAnonKey ? '✓ Set' : '✗ Missing'}`);
-console.log(`  MONIME_ACCESS_TOKEN: ${MONIME_ACCESS_TOKEN ? '✓ Set' : '✗ Missing (online checkout disabled)'}`);
-console.log(`  MONIME_SPACE_ID: ${MONIME_SPACE_ID ? '✓ Set' : '✗ Missing'}`);
+console.log(`  SUPABASE_URL: ${supabaseUrl ? 'set' : 'missing'}`);
+console.log(`  SUPABASE_ANON_KEY: ${supabaseAnonKey ? 'set' : 'missing'}`);
+console.log(`  MONIME_ACCESS_TOKEN: ${MONIME_ACCESS_TOKEN ? 'set' : 'missing'}`);
+console.log(`  MONIME_SPACE_ID: ${MONIME_SPACE_ID ? 'set' : 'missing'}`);
 if (MONIME_ACCESS_TOKEN) {
     console.log(`  Monime token mode: ${MONIME_TOKEN_MODE}${MONIME_REQUIRE_LIVE_TOKEN ? ' (live token required)' : ''}`);
 }
@@ -122,13 +114,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Configure SendGrid
-// Clean the API key to remove any whitespace, newlines, or invalid characters that could cause issues
 const sendgridApiKey = process.env.SENDGRID_API_KEY 
     ? process.env.SENDGRID_API_KEY.replace(/\r\n/g, '').replace(/\n/g, '').replace(/\r/g, '').trim() 
     : null;
-// Use verified sender: scholarships@kns.edu.sl
-// If SENDGRID_FROM_EMAIL is set but not the verified email, use the verified one instead
 const envFromEmail = process.env.SENDGRID_FROM_EMAIL;
 const verifiedSenderEmail = 'scholarships@kns.edu.sl';
 const sendgridFromEmail = (envFromEmail === verifiedSenderEmail) ? envFromEmail : verifiedSenderEmail;
@@ -140,92 +128,55 @@ if (!sendgridApiKey) {
         'Warning: SENDGRID_API_KEY is not set. Contact form emails will not be sent.'
     );
 } else {
-    // Validate API key format (SendGrid API keys start with "SG.")
     if (!sendgridApiKey.startsWith('SG.')) {
-        console.warn('⚠️  Warning: SENDGRID_API_KEY does not appear to be in the correct format (should start with "SG.")');
+        console.warn('SendGrid: API key should start with SG.');
     }
-    
-    // Check for any remaining invalid characters that could cause header issues
+
     const invalidChars = /[\r\n\t]/;
     if (invalidChars.test(sendgridApiKey)) {
-        console.error('✗ Error: SENDGRID_API_KEY contains invalid characters (newlines, tabs, etc.)');
-        console.error('  Please check your environment variable on Render and ensure it contains only the API key without any extra characters.');
+        console.error('SendGrid: API key has stray newlines or tabs — fix it in Render env vars');
     } else {
-        // Set API key with cleaned value
         try {
             sgMail.setApiKey(sendgridApiKey);
-            console.log('SendGrid Configuration:');
-            console.log(`  From Email: ${sendgridFromEmail} ${sendgridFromEmail === verifiedSenderEmail ? '✓ (Verified)' : '⚠️ (Not verified)'}`);
+            console.log('SendGrid:');
+            console.log(`  from: ${sendgridFromEmail}`);
             if (envFromEmail && envFromEmail !== verifiedSenderEmail) {
-                console.warn(`  ⚠️  Warning: SENDGRID_FROM_EMAIL was set to "${envFromEmail}" but using verified sender "${verifiedSenderEmail}" instead.`);
+                console.warn(`  SENDGRID_FROM_EMAIL was ${envFromEmail}; using ${verifiedSenderEmail}`);
             }
-            console.log(`  Default To Email: ${sendgridToEmail}`);
-            console.log(`  Scholarship Applications To: ${process.env.SENDGRID_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com'}`);
-            console.log(`  Contact Forms To: ${process.env.SENDGRID_CONTACT_EMAIL || 'admissions@kns.edu.sl'}`);
-            console.log(`  Enquiry Forms To: ${process.env.SENDGRID_ENQUIRY_EMAIL || 'enquiry@kns.edu.sl'}`);
-            console.log(`  API Key: ✓ Set (length: ${sendgridApiKey.length} characters)\n`);
+            console.log(`  default to: ${sendgridToEmail}`);
+            console.log(`  scholarships: ${process.env.SENDGRID_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com'}`);
+            console.log(`  contact: ${process.env.SENDGRID_CONTACT_EMAIL || 'admissions@kns.edu.sl'}`);
+            console.log(`  enquiry: ${process.env.SENDGRID_ENQUIRY_EMAIL || 'enquiry@kns.edu.sl'}\n`);
         } catch (error) {
-            console.error('✗ Error setting SendGrid API key:', error.message);
-            console.error('  Please verify your SENDGRID_API_KEY environment variable on Render.');
+            console.error('SendGrid: could not set API key —', error.message);
         }
     }
 }
 
-// Middleware
-// CORS configuration - allows requests from Sector Link frontend and other origins
-// Frontend is hosted on www.kns.edu.sl, backend is on Render
-// Set DEBUG_CORS=true environment variable to enable detailed CORS logging
 const DEBUG_CORS = process.env.DEBUG_CORS === 'true';
 
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps, Postman, etc.)
-        // Only log in debug mode to reduce log noise
         if (!origin) {
-            if (DEBUG_CORS) {
-                console.log('CORS: Allowing request with no origin');
-            }
+            if (DEBUG_CORS) console.log('CORS: no origin');
             return callback(null, true);
         }
-        
-        // Explicitly allow www.kns.edu.sl and kns.edu.sl
-        const allowedDomains = [
-            'https://www.kns.edu.sl',
-            'https://kns.edu.sl',
-            'http://www.kns.edu.sl',
-            'http://kns.edu.sl'
-        ];
-        
-        if (allowedDomains.includes(origin) || origin.includes('kns.edu.sl')) {
-            if (DEBUG_CORS) {
-                console.log(`CORS: Allowing request from KNS domain: ${origin}`);
-            }
+
+        if (KNS_SITE_ORIGINS.includes(origin) || origin.includes('kns.edu.sl')) {
+            if (DEBUG_CORS) console.log(`CORS: ${origin}`);
             return callback(null, true);
         }
-        
-        // Get allowed origins from environment variable or use default
-        const allowedOrigins = process.env.CORS_ORIGIN 
+
+        const allowedOrigins = process.env.CORS_ORIGIN
             ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
-            : ['*']; // Default: allow all origins
-        
-        // If '*' is in allowed origins, allow all (only log in debug mode)
-        if (allowedOrigins.includes('*')) {
-            if (DEBUG_CORS) {
-                console.log(`CORS: Allowing request from origin (wildcard): ${origin}`);
-            }
-            return callback(null, true);
-        }
-        
-        // Check if origin is in allowed list
-        if (allowedOrigins.includes(origin)) {
-            if (DEBUG_CORS) {
-                console.log(`CORS: Allowing request from origin (in list): ${origin}`);
-            }
+            : ['*'];
+
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            if (DEBUG_CORS) console.log(`CORS: ${origin}`);
             callback(null, true);
         } else {
-            // Log fallback cases as they might indicate misconfiguration
-            console.log(`CORS: Allowing request from origin (fallback): ${origin}`);
-            callback(null, true); // Still allow, but log for debugging
+            console.log(`CORS: allowing ${origin}`);
+            callback(null, true);
         }
     },
     credentials: true,
@@ -235,24 +186,12 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Add CORS headers manually as fallback (for maximum compatibility)
 app.use((req, res, next) => {
     const origin = req.headers.origin;
-    
-    // Explicitly allow www.kns.edu.sl and kns.edu.sl
-    const allowedOrigins = [
-        'https://www.kns.edu.sl',
-        'https://kns.edu.sl',
-        'http://www.kns.edu.sl',
-        'http://kns.edu.sl'
-    ];
-    
-    // If origin matches allowed domains, use it; otherwise use origin or wildcard
-    if (origin && (allowedOrigins.includes(origin) || origin.includes('kns.edu.sl'))) {
+
+    if (origin && (KNS_SITE_ORIGINS.includes(origin) || origin.includes('kns.edu.sl'))) {
         res.header('Access-Control-Allow-Origin', origin);
-        if (DEBUG_CORS) {
-            console.log(`[CORS Header] Set Access-Control-Allow-Origin to: ${origin}`);
-        }
+        if (DEBUG_CORS) console.log(`CORS header: ${origin}`);
     } else if (origin) {
         res.header('Access-Control-Allow-Origin', origin);
     } else {
@@ -262,12 +201,10 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With');
     res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400'); // 24 hours
-    
+    res.header('Access-Control-Max-Age', '86400');
+
     if (req.method === 'OPTIONS') {
-        if (DEBUG_CORS) {
-            console.log(`[CORS] Handling OPTIONS preflight request from origin: ${origin || 'none'}`);
-        }
+        if (DEBUG_CORS) console.log(`CORS preflight: ${origin || 'none'}`);
         return res.sendStatus(200);
     }
     next();
@@ -275,15 +212,13 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Configure multer for file uploads
-const storage = multer.memoryStorage(); // Store files in memory (can be changed to disk storage)
+const storage = multer.memoryStorage();
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit per file
+        fileSize: 5 * 1024 * 1024
     },
     fileFilter: (req, file, cb) => {
-        // Accept PDF, images, and document files
         const allowedMimes = [
             'application/pdf',
             'image/jpeg',
@@ -300,7 +235,6 @@ const upload = multer({
     }
 });
 
-// Request logging middleware (for debugging)
 app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) {
         console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -310,37 +244,35 @@ app.use((req, res, next) => {
     next();
 });
 
-// Initialize database connection
 async function initDatabase() {
     try {
         console.log('Testing Supabase connection...');
-        // Test the connection by querying a table
+        // startup — ping supabase
         const { data, error } = await supabase.from('messages').select('id').limit(1);
         
         if (error) {
-            // PGRST116 is "relation does not exist" - this is okay, table might not exist yet
+            // missing table is fine on first deploy
             if (error.code === 'PGRST116') {
-                console.log('✓ Supabase connection successful (messages table does not exist yet)');
+                console.log('Supabase connection successful (messages table does not exist yet)');
             } else {
-                console.error('✗ Supabase connection error:', error);
+                console.error('Supabase connection error:', error);
                 console.error('Error code:', error.code);
                 console.error('Error message:', error.message);
                 console.error('Error details:', error.details);
                 throw error;
             }
         } else {
-            console.log('✓ Connected to Supabase database successfully');
+            console.log('Connected to Supabase database successfully');
             console.log(`  Supabase URL: ${supabaseUrl}`);
         }
         return Promise.resolve();
     } catch (err) {
-        console.error('✗ Database connection failed:', err.message);
+        console.error('Database connection failed:', err.message);
         console.error('Full error:', err);
         return Promise.reject(err);
     }
 }
 
-// Helper function to get client IP address
 function getClientIp(req) {
     return req.headers['x-forwarded-for']?.split(',')[0] || 
            req.connection.remoteAddress || 
@@ -348,30 +280,14 @@ function getClientIp(req) {
            'unknown';
 }
 
-// Helper function to get user agent
 function getUserAgent(req) {
     return req.headers['user-agent'] || 'unknown';
 }
 
-// API Routes
-
-// Root endpoint for health checks (Render and other services may ping this)
 app.get('/', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        message: 'KNS College API is running',
-        service: 'KNS College Backend API',
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        endpoints: {
-            health: '/api/health',
-            scholarships: '/api/scholarships',
-            applications: '/api/scholarship-applications'
-        }
-    });
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Health check endpoint (for monitoring services)
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'ok', 
@@ -392,7 +308,6 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Test email endpoint (for debugging email delivery)
 app.post('/api/test-email', async (req, res) => {
     const { to } = req.body;
     const testRecipient = to || process.env.SENDGRID_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com';
@@ -409,10 +324,8 @@ app.post('/api/test-email', async (req, res) => {
         const testBody = `
 This is a test email from the KNS College API server.
 
-If you receive this email, it means:
-✓ SendGrid API key is valid
-✓ Sender email (${sendgridFromEmail}) is verified
-✓ Email delivery is working
+If you receive this, SendGrid is working.
+From: ${sendgridFromEmail}
 
 Server Details:
 - Timestamp: ${new Date().toISOString()}
@@ -430,13 +343,13 @@ You can safely delete this test email.
             html: `<p>${testBody.replace(/\n/g, '<br>')}</p>`
         };
         
-        console.log(`📧 Sending test email...`);
+        console.log('Sending test email…');
         console.log(`  From: ${sendgridFromEmail}`);
         console.log(`  To: ${testRecipient}`);
         
         const response = await sgMail.send(msg);
         
-        console.log('✓ Test email sent successfully');
+        console.log('Test email sent successfully');
         console.log(`  SendGrid Status: ${response[0]?.statusCode || 'Success'}`);
         
         res.json({ 
@@ -448,7 +361,7 @@ You can safely delete this test email.
             note: 'Check your inbox (and spam folder) for the email'
         });
     } catch (error) {
-        console.error('✗ Error sending test email:', error);
+        console.error('Error sending test email:', error);
         console.error(`  Status Code: ${error.code || error.response?.statusCode || 'Unknown'}`);
         
         if (error.response?.body?.errors) {
@@ -467,7 +380,6 @@ You can safely delete this test email.
     }
 });
 
-// Test endpoint for debugging API connectivity
 app.get('/api/test', (req, res) => {
     res.json({ 
         status: 'ok', 
@@ -480,7 +392,6 @@ app.get('/api/test', (req, res) => {
     });
 });
 
-// --- Online course ratings (registered early so dev/prod always see these routes) ---
 const OC_RATING_WINDOW_MS = 60 * 60 * 1000;
 const OC_RATING_MAX_PER_WINDOW = 40;
 const ocRatingIpBuckets = new Map();
@@ -540,7 +451,6 @@ async function fetchRatingAggregateForCourse(courseKey) {
     };
 }
 
-// Online courses page — categories and active courses from Supabase
 app.get('/api/online-courses', async (req, res) => {
     try {
         const { data: catRows, error: catErr } = await supabase
@@ -693,10 +603,6 @@ app.post('/api/online-course-ratings', async (req, res) => {
     }
 });
 
-/**
- * Proxy: create Monime Checkout Session (never expose MONIME_ACCESS_TOKEN to the browser).
- * API: POST https://api.monime.io/v1/checkout-sessions — see create-checkout-session in Monime docs.
- */
 function isAllowedMonimeReturnUrl(urlStr) {
     if (!urlStr || typeof urlStr !== 'string') return false;
     try {
@@ -708,7 +614,6 @@ function isAllowedMonimeReturnUrl(urlStr) {
     }
 }
 
-/** Monime limits successUrl/cancelUrl to 255 chars — store course details server-side, use short ?id= links */
 const checkoutReturnStore = new Map();
 const CHECKOUT_RETURN_TTL_MS = 48 * 60 * 60 * 1000;
 
@@ -750,7 +655,7 @@ function resolveReturnOrigin(req) {
             const origin = /^https?:\/\//i.test(raw.trim()) ? new URL(raw.trim()).origin : null;
             if (origin && isAllowedMonimeReturnUrl(origin + '/')) return origin;
         } catch (ignore) {
-            /* try next */
+            /* next candidate */
         }
     }
     return null;
@@ -765,7 +670,6 @@ function buildShortPaymentReturnUrls(origin, returnId) {
     };
 }
 
-// Checkout amount from Supabase — don't trust whatever the browser sends
 async function lookupOnlineCourseAmountSleMinor(courseNameTrimmed) {
     const cn = String(courseNameTrimmed || '').trim();
     if (!cn) return null;
@@ -791,7 +695,7 @@ async function lookupOnlineCourseAmountSleMinor(courseNameTrimmed) {
             if (Number.isInteger(n) && n >= 1 && n <= 100000000) return n;
         }
     } catch (ignore) {
-        /* table/column may be missing until migration */
+        /* online_courses not migrated yet */
     }
     return null;
 }
@@ -874,7 +778,7 @@ app.post('/api/monime/checkout-session', async (req, res) => {
                 const o = new URL(String(returnOriginBody).trim());
                 if (isAllowedMonimeReturnUrl(o.origin + '/')) returnOrigin = o.origin;
             } catch (ignore) {
-                /* invalid returnOrigin */
+                /* bad returnOrigin */
             }
         }
         if (!returnOrigin) returnOrigin = resolveReturnOrigin(req);
@@ -977,7 +881,6 @@ app.post('/api/monime/checkout-session', async (req, res) => {
     }
 });
 
-// After Monime redirect — browser loads course/price from short ?id= link
 app.get('/api/monime/checkout-return-context', (req, res) => {
     const id = String(req.query.id || req.query.ref || '').trim();
     if (!id) {
@@ -998,7 +901,6 @@ app.get('/api/monime/checkout-return-context', (req, res) => {
     });
 });
 
-// Enhanced scholarships test endpoint with detailed diagnostics
 app.get('/api/scholarships/diagnostics', async (req, res) => {
     try {
         const diagnostics = {
@@ -1009,7 +911,7 @@ app.get('/api/scholarships/diagnostics', async (req, res) => {
             tests: {}
         };
         
-        // Test 1: Basic connection test
+        // diagnostics — table access
         try {
             const { data: testData, error: testError, count } = await supabase
                 .from('scholarships')
@@ -1034,7 +936,7 @@ app.get('/api/scholarships/diagnostics', async (req, res) => {
             };
         }
         
-        // Test 2: Check active scholarships
+        // diagnostics — active scholarships
         try {
             const { data: activeData, error: activeError } = await supabase
                 .from('scholarships')
@@ -1058,7 +960,7 @@ app.get('/api/scholarships/diagnostics', async (req, res) => {
             };
         }
         
-        // Test 3: Check all scholarships (regardless of is_active)
+        // diagnostics — all scholarships
         try {
             const { data: allData, error: allError } = await supabase
                 .from('scholarships')
@@ -1091,12 +993,11 @@ app.get('/api/scholarships/diagnostics', async (req, res) => {
     }
 });
 
-// Test scholarships endpoint (for debugging)
 app.get('/api/scholarships/test', async (req, res) => {
     try {
         console.log('Testing scholarships connection...');
         
-        // Test 1: Check if we can query the table at all
+        // scholarships test — table query
         const { data: testData, error: testError, count } = await supabase
             .from('scholarships')
             .select('*', { count: 'exact' })
@@ -1116,7 +1017,7 @@ app.get('/api/scholarships/test', async (req, res) => {
             sample_record: testData && testData.length > 0 ? testData[0] : null
         };
         
-        // Test 2: Check active scholarships
+        // scholarships test — active rows
         const { data: activeData, error: activeError } = await supabase
             .from('scholarships')
             .select('id, title, is_active')
@@ -1140,7 +1041,6 @@ app.get('/api/scholarships/test', async (req, res) => {
     }
 });
 
-// Save chatbot message
 app.post('/api/messages', async (req, res) => {
     const { sessionId, sender, message } = req.body;
     
@@ -1185,7 +1085,6 @@ app.post('/api/messages', async (req, res) => {
     });
 });
 
-// Get messages by session ID
 app.get('/api/messages/:sessionId', async (req, res) => {
     const { sessionId } = req.params;
     
@@ -1203,7 +1102,6 @@ app.get('/api/messages/:sessionId', async (req, res) => {
     res.json({ success: true, messages: data || [] });
 });
 
-// Save contact form submission
 app.post('/api/contacts', async (req, res) => {
     const { name, email, phone, subject, message } = req.body;
     
@@ -1216,7 +1114,7 @@ app.post('/api/contacts', async (req, res) => {
     const ipAddress = getClientIp(req);
     const userAgent = getUserAgent(req);
     
-    // Insert only fields that exist in the database schema
+    // contact form — save to DB
     const { data, error } = await supabase
         .from('contacts')
         .insert([
@@ -1245,7 +1143,7 @@ app.post('/api/contacts', async (req, res) => {
         });
     }
 
-    // Attempt to send email via SendGrid (non-blocking for client)
+    // contact form — sendgrid notification (fire and forget)
     if (!sendgridApiKey || !sendgridFromEmail || !sendgridToEmail) {
         console.warn(
             'Contact saved, but SendGrid is not fully configured. Skipping email send.'
@@ -1295,21 +1193,21 @@ Submitted At: ${new Date().toISOString()}
             html: htmlBody,
         };
 
-        console.log(`📧 Attempting to send contact form email...`);
+        console.log(`Attempting to send contact form email...`);
         console.log(`  From: ${sendgridFromEmail}`);
         console.log(`  To: ${contactRecipientEmail}`);
 
         sgMail
             .send(msg)
             .then((response) => {
-                console.log('✓ Contact notification email sent via SendGrid');
+                console.log('Contact notification email sent via SendGrid');
                 console.log(`  From: ${sendgridFromEmail}`);
                 console.log(`  To: ${contactRecipientEmail}`);
                 console.log(`  SendGrid Status: ${response[0]?.statusCode || 'Success'}`);
-                console.log(`  ⚠️  Note: SendGrid accepted the email (202), but delivery depends on recipient mail server.`);
+                console.log(`  Note: SendGrid accepted the email (202), but delivery depends on recipient mail server.`);
             })
             .catch((emailError) => {
-                console.error('✗ Error sending contact email via SendGrid');
+                console.error('Error sending contact email via SendGrid');
                 console.error(`  Status Code: ${emailError.code || emailError.response?.statusCode || 'Unknown'}`);
                 console.error(`  From Email: ${sendgridFromEmail}`);
                 
@@ -1320,10 +1218,10 @@ Submitted At: ${new Date().toISOString()}
                 }
                 
                 if (emailError.code === 403 || emailError.response?.statusCode === 403) {
-                    console.error('  ⚠️  Sender email may not be verified in SendGrid. Run: node setup-sender.js');
+                    console.error(' Sender email may not be verified in SendGrid. Run: node setup-sender.js');
                 } else {
-                    console.error('\n  ⚠️  If SendGrid accepts emails (202) but they show "Deferred" in Activity:');
-                    console.error('     Check recipient mail server connectivity (see scholarship application handler for details)');
+                    console.error('\n  If SendGrid accepts emails (202) but they show "Deferred" in Activity:');
+                    console.error('    Check recipient mail server connectivity (see scholarship application handler for details)');
                 }
             });
     }
@@ -1335,7 +1233,6 @@ Submitted At: ${new Date().toISOString()}
     });
 });
 
-// Get all contacts (for admin - you may want to add authentication)
 app.get('/api/contacts', async (req, res) => {
     const { data, error } = await supabase
         .from('contacts')
@@ -1350,7 +1247,6 @@ app.get('/api/contacts', async (req, res) => {
     res.json({ success: true, contacts: data || [] });
 });
 
-// Save enquiry form submission
 app.post('/api/enquiries', async (req, res) => {
     const { name, email, phone, programme_interest, preferred_intake, message, newsletter } = req.body;
     
@@ -1387,7 +1283,7 @@ app.post('/api/enquiries', async (req, res) => {
         return res.status(500).json({ error: 'Failed to save enquiry submission' });
     }
 
-    // Attempt to send email via SendGrid (non-blocking for client)
+    // enquiry form — sendgrid notification (fire and forget)
     if (!sendgridApiKey || !sendgridFromEmail || !sendgridToEmail) {
         console.warn(
             'Enquiry saved, but SendGrid is not fully configured. Skipping email send.'
@@ -1441,21 +1337,21 @@ Submitted At: ${new Date().toISOString()}
             html: htmlBody,
         };
 
-        console.log(`📧 Attempting to send enquiry form email...`);
+        console.log(`Attempting to send enquiry form email...`);
         console.log(`  From: ${sendgridFromEmail}`);
         console.log(`  To: ${enquiryRecipientEmail}`);
 
         sgMail
             .send(msg)
             .then((response) => {
-                console.log('✓ Enquiry notification email sent via SendGrid');
+                console.log('Enquiry notification email sent via SendGrid');
                 console.log(`  From: ${sendgridFromEmail}`);
                 console.log(`  To: ${enquiryRecipientEmail}`);
                 console.log(`  SendGrid Status: ${response[0]?.statusCode || 'Success'}`);
-                console.log(`  ⚠️  Note: SendGrid accepted the email (202), but delivery depends on recipient mail server.`);
+                console.log(`  Note: SendGrid accepted the email (202), but delivery depends on recipient mail server.`);
             })
             .catch((emailError) => {
-                console.error('✗ Error sending enquiry email via SendGrid');
+                console.error('Error sending enquiry email via SendGrid');
                 console.error(`  Status Code: ${emailError.code || emailError.response?.statusCode || 'Unknown'}`);
                 console.error(`  From Email: ${sendgridFromEmail}`);
                 
@@ -1466,10 +1362,10 @@ Submitted At: ${new Date().toISOString()}
                 }
                 
                 if (emailError.code === 403 || emailError.response?.statusCode === 403) {
-                    console.error('  ⚠️  Sender email may not be verified in SendGrid. Run: node setup-sender.js');
+                    console.error(' Sender email may not be verified in SendGrid. Run: node setup-sender.js');
                 } else {
-                    console.error('\n  ⚠️  If SendGrid accepts emails (202) but they show "Deferred" in Activity:');
-                    console.error('     Check recipient mail server connectivity (see scholarship application handler for details)');
+                    console.error('\n  If SendGrid accepts emails (202) but they show "Deferred" in Activity:');
+                    console.error('    Check recipient mail server connectivity (see scholarship application handler for details)');
                 }
             });
     }
@@ -1481,7 +1377,6 @@ Submitted At: ${new Date().toISOString()}
     });
 });
 
-// Get all enquiries (for admin - you may want to add authentication)
 app.get('/api/enquiries', async (req, res) => {
     const { data, error } = await supabase
         .from('enquiries')
@@ -1496,7 +1391,6 @@ app.get('/api/enquiries', async (req, res) => {
     res.json({ success: true, enquiries: data || [] });
 });
 
-// Save enrollment form submission
 app.post('/api/enrollments', async (req, res) => {
     const { 
         courseName, 
@@ -1549,7 +1443,6 @@ app.post('/api/enrollments', async (req, res) => {
     });
 });
 
-// Get all enrollments (for admin - you may want to add authentication)
 app.get('/api/enrollments', async (req, res) => {
     const { data, error } = await supabase
         .from('enrollments')
@@ -1564,7 +1457,6 @@ app.get('/api/enrollments', async (req, res) => {
     res.json({ success: true, enrollments: data || [] });
 });
 
-// Save payment/application form submission
 app.post('/api/payments', async (req, res) => {
     const { 
         courseName, 
@@ -1643,7 +1535,6 @@ app.post('/api/payments', async (req, res) => {
     });
 });
 
-// Update payment status (for webhook/callback from payment provider)
 app.patch('/api/payments/:paymentId', async (req, res) => {
     const { paymentId } = req.params;
     const { paymentStatus, paymentReference } = req.body;
@@ -1685,7 +1576,6 @@ app.patch('/api/payments/:paymentId', async (req, res) => {
     });
 });
 
-// Get all payments (for admin - you may want to add authentication)
 app.get('/api/payments', async (req, res) => {
     const { status, course, reference } = req.query;
     
@@ -1719,7 +1609,7 @@ app.get('/api/payments', async (req, res) => {
 
 app.get('/api/scholarships', async (req, res) => {
     try {
-        // Fetch active scholarships
+        // scholarships list — active only
         let query = supabase
             .from('scholarships')
             .select('*')
@@ -1731,7 +1621,7 @@ app.get('/api/scholarships', async (req, res) => {
         if (error) {
             console.error('Error fetching scholarships:', error.code, error.message);
             
-            // Handle specific error cases
+            // map common supabase errors
             if (error.code === 'PGRST116' || error.code === '42P01') {
                 return res.status(500).json({ 
                     error: 'Scholarships table not found',
@@ -1753,7 +1643,7 @@ app.get('/api/scholarships', async (req, res) => {
             });
         }
         
-        // Return response with helpful message if no scholarships
+        // empty list — still 200 with a hint
         if (!data || data.length === 0) {
             return res.json({ 
                 success: true, 
@@ -1802,11 +1692,10 @@ app.get('/api/scholarships/:id', async (req, res) => {
     }
 });
 
-// Download scholarship files endpoint
 app.get('/api/scholarships/:id/download/:type', async (req, res) => {
     const { id, type } = req.params;
     
-    // Validate type
+    // guide or form only
     if (type !== 'guide' && type !== 'form') {
         return res.status(400).json({ error: 'Invalid download type. Use "guide" or "form".' });
     }
@@ -1835,12 +1724,8 @@ app.get('/api/scholarships/:id/download/:type', async (req, res) => {
         
         const trimmedPath = filePath.trim();
         
-        // If it's a full URL, proxy the file or redirect
+        // external file URL — proxy so the browser doesn't hit CORS
         if (trimmedPath.startsWith('http://') || trimmedPath.startsWith('https://')) {
-            
-            // For external URLs, we can either redirect or proxy
-            // Redirect is simpler but may have CORS issues
-            // Let's proxy it to avoid CORS issues
             try {
                 const https = require('https');
                 const http = require('http');
@@ -1857,7 +1742,7 @@ app.get('/api/scholarships/:id/download/:type', async (req, res) => {
                         });
                     }
                     
-                    // Determine content type from response or file extension
+                    // content-type from response or extension
                     const contentType = fileResponse.headers['content-type'] || 
                                       (trimmedPath.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream');
                     
@@ -1871,21 +1756,20 @@ app.get('/api/scholarships/:id/download/:type', async (req, res) => {
                     res.status(500).json({ error: 'Failed to fetch file from external source', details: err.message });
                 });
             } catch (proxyError) {
-                // Fallback to redirect
+                // proxy failed — redirect instead
                 return res.redirect(trimmedPath);
             }
-            return; // Don't continue to file serving
+            return;
         }
         
-        // Otherwise, try to serve from the scholarships directory
+        // local file — scholarships folder
         const path = require('path');
         const fs = require('fs');
         
-        // Clean the path
+        // normalize path under scholarships/
         let cleanPath = trimmedPath.replace(/^\/+/, '').replace(/^scholarships\//, '');
         const fullPath = path.join(__dirname, 'scholarships', cleanPath);
         
-        // Check if file exists
         if (!fs.existsSync(fullPath)) {
             return res.status(404).json({ 
                 error: 'File not found',
@@ -1895,7 +1779,7 @@ app.get('/api/scholarships/:id/download/:type', async (req, res) => {
             });
         }
         
-        // Determine content type
+        // pick MIME from extension
         const ext = path.extname(fullPath).toLowerCase();
         let contentType = 'application/octet-stream';
         if (ext === '.pdf') {
@@ -1906,7 +1790,6 @@ app.get('/api/scholarships/:id/download/:type', async (req, res) => {
             contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         }
         
-        // Set headers and send file
         res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Disposition', `attachment; filename="${path.basename(fullPath)}"`);
         res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1928,7 +1811,6 @@ app.get('/api/scholarships/:id/download/:type', async (req, res) => {
     }
 });
 
-// Test endpoint to check file availability
 app.get('/api/scholarships/:id/files/check', async (req, res) => {
     const { id } = req.params;
     
@@ -1959,7 +1841,7 @@ app.get('/api/scholarships/:id/files/check', async (req, res) => {
             scholarships_dir_exists: fs.existsSync(path.join(__dirname, 'scholarships'))
         };
         
-        // Check guide file
+        // guide file on disk
         if (data.guide_path && data.guide_path.trim() && !data.guide_path.startsWith('http')) {
             const cleanPath = data.guide_path.replace(/^\/+/, '').replace(/^scholarships\//, '');
             const fullPath = path.join(__dirname, 'scholarships', cleanPath);
@@ -1969,7 +1851,7 @@ app.get('/api/scholarships/:id/files/check', async (req, res) => {
             results.guide_exists = 'external_url';
         }
         
-        // Check form file
+        // form file on disk
         if (data.form_path && data.form_path.trim() && !data.form_path.startsWith('http')) {
             const cleanPath = data.form_path.replace(/^\/+/, '').replace(/^scholarships\//, '');
             const fullPath = path.join(__dirname, 'scholarships', cleanPath);
@@ -1986,10 +1868,9 @@ app.get('/api/scholarships/:id/files/check', async (req, res) => {
     }
 });
 
-// Save scholarship application form submission (no file uploads - documents submitted in person)
 app.post('/api/scholarship-applications', async (req, res) => {
     try {
-        // Extract form fields from JSON body
+        // scholarship application — parse body
         const {
             scholarship_id,
             surname,
@@ -2015,7 +1896,7 @@ app.post('/api/scholarship-applications', async (req, res) => {
             declaration
         } = req.body;
         
-        // Validate required fields - ensure national_id is not empty or null
+        // required fields + national_id
         if (!surname || !first_name || !gender || !date_of_birth || !nationality || 
             !national_id || national_id.trim() === '' ||
             !address || !city || !phone || !email || !highest_qualification || !school_institution ||
@@ -2026,7 +1907,7 @@ app.post('/api/scholarship-applications', async (req, res) => {
             });
         }
         
-        // Validate personal statement word count (minimum 300 words)
+        // personal statement — min 300 words
         const statementWords = personal_statement.trim().split(/\s+/).filter(word => word.length > 0);
         if (statementWords.length < 300) {
             return res.status(400).json({ 
@@ -2037,7 +1918,7 @@ app.post('/api/scholarship-applications', async (req, res) => {
         const ipAddress = getClientIp(req);
         const userAgent = getUserAgent(req);
         
-        // Insert application into database
+        // save application
         const { data, error } = await supabase
             .from('scholarship_applications')
             .insert([
@@ -2049,7 +1930,7 @@ app.post('/api/scholarship-applications', async (req, res) => {
                     gender: gender,
                     date_of_birth: date_of_birth,
                     nationality: nationality,
-                    national_id: national_id.trim(), // Ensure no leading/trailing whitespace
+                    national_id: national_id.trim(),
                     address: address,
                     city: city,
                     phone: phone,
@@ -2086,7 +1967,7 @@ app.post('/api/scholarship-applications', async (req, res) => {
             });
         }
         
-        // Attempt to send email notification via SendGrid (non-blocking)
+        // sendgrid notification (fire and forget)
         if (sendgridApiKey && sendgridFromEmail && sendgridToEmail) {
             const subjectLine = `New Scholarship Application: ${programme} - ${first_name} ${surname}`;
             
@@ -2186,7 +2067,6 @@ Submitted At: ${new Date().toISOString()}
                 <p><strong>Submitted At:</strong> ${new Date().toISOString()}</p>
             `;
             
-            // Use SENDGRID_SCHOLARSHIP_EMAIL or default to knscollegesle@gmail.com
             const scholarshipRecipientEmail = process.env.SENDGRID_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com';
             
             const msg = {
@@ -2197,7 +2077,7 @@ Submitted At: ${new Date().toISOString()}
                 html: htmlBody,
             };
             
-            console.log(`📧 Attempting to send scholarship application email...`);
+            console.log(`Attempting to send scholarship application email...`);
             console.log(`  From: ${sendgridFromEmail}`);
             console.log(`  To: ${scholarshipRecipientEmail}`);
             console.log(`  Subject: ${subjectLine}`);
@@ -2205,23 +2085,22 @@ Submitted At: ${new Date().toISOString()}
             sgMail
                 .send(msg)
                 .then((response) => {
-                    console.log('✓ Scholarship application notification email sent via SendGrid');
+                    console.log('Scholarship application notification email sent via SendGrid');
                     console.log(`  From: ${sendgridFromEmail}`);
                     console.log(`  To: ${scholarshipRecipientEmail}`);
                     console.log(`  SendGrid Status: ${response[0]?.statusCode || 'Success'}`);
                     if (response[0]?.headers?.['x-message-id']) {
                         console.log(`  Message ID: ${response[0].headers['x-message-id']}`);
                     }
-                    console.log(`  ⚠️  Note: SendGrid accepted the email (202), but delivery depends on recipient mail server.`);
-                    console.log(`  ⚠️  If emails show "Deferred" in SendGrid Activity, check recipient mail server connectivity.`);
+                    console.log(`  Note: SendGrid accepted the email (202), but delivery depends on recipient mail server.`);
+                    console.log(`  If emails show "Deferred" in SendGrid Activity, check recipient mail server connectivity.`);
                 })
                 .catch((emailError) => {
-                    console.error('✗ Error sending scholarship application email via SendGrid');
+                    console.error('Error sending scholarship application email via SendGrid');
                     console.error(`  Status Code: ${emailError.code || emailError.response?.statusCode || 'Unknown'}`);
                     console.error(`  From Email: ${sendgridFromEmail}`);
                     console.error(`  To Email: ${scholarshipRecipientEmail}`);
                     
-                    // Log detailed error information
                     if (emailError.response) {
                         console.error(`  Response Body:`, JSON.stringify(emailError.response.body, null, 2));
                         if (emailError.response.body?.errors) {
@@ -2231,36 +2110,36 @@ Submitted At: ${new Date().toISOString()}
                         }
                     }
                     
-                    // Provide specific guidance for common errors
+                    // sendgrid 403 — sender not verified
                     if (emailError.code === 403 || emailError.response?.statusCode === 403) {
                         console.error('\n  🔧 Troubleshooting 403 Forbidden Error:');
-                        console.error('    1. Verify the sender email is verified in SendGrid:');
+                        console.error('   1. Verify the sender email is verified in SendGrid:');
                         console.error(`       - Go to SendGrid Dashboard > Settings > Sender Authentication`);
                         console.error(`       - Verify that "${sendgridFromEmail}" is verified`);
                         console.error(`    2. Run the setup script to verify sender: node setup-sender.js`);
-                        console.error('    3. Check API key permissions (needs "Mail Send" permission)');
-                        console.error('    4. For domain-based sending, ensure domain is authenticated\n');
+                        console.error('   3. Check API key permissions (needs "Mail Send" permission)');
+                        console.error('   4. For domain-based sending, ensure domain is authenticated\n');
                     } else if (emailError.code === 401 || emailError.response?.statusCode === 401) {
                         console.error('\n  🔧 Troubleshooting 401 Unauthorized Error:');
-                        console.error('    1. Check that SENDGRID_API_KEY is correct');
-                        console.error('    2. Verify the API key is active in SendGrid Dashboard\n');
+                        console.error('   1. Check that SENDGRID_API_KEY is correct');
+                        console.error('   2. Verify the API key is active in SendGrid Dashboard\n');
                     } else {
                         console.error(`  Full Error:`, emailError.message || emailError);
                     }
                     
-                    // Warn about delivery issues
-                    console.error('\n  ⚠️  IMPORTANT: If SendGrid accepts emails (202 status) but they show "Deferred" in Activity:');
-                    console.error('     This indicates the recipient mail server cannot be reached.');
-                    console.error('     Common causes:');
-                    console.error('     1. Mail server is down or unreachable');
-                    console.error('     2. Port 25 is blocked by firewall');
-                    console.error('     3. Mail server IP is blacklisted');
-                    console.error('     4. DNS/MX records misconfigured');
-                    console.error('     Solutions:');
-                    console.error('     - Test with a working email (Gmail, Outlook) to verify SendGrid works');
-                    console.error('     - Check MX records: nslookup -type=MX kns.edu.sl');
-                    console.error('     - Verify mail server accepts connections on port 25');
-                    console.error('     - Consider using email forwarding service\n');
+                    // deferred delivery — recipient mail server issue
+                    console.error('\n  IMPORTANT: If SendGrid accepts emails (202 status) but they show "Deferred" in Activity:');
+                    console.error('    This indicates the recipient mail server cannot be reached.');
+                    console.error('    Common causes:');
+                    console.error('    1. Mail server is down or unreachable');
+                    console.error('    2. Port 25 is blocked by firewall');
+                    console.error('    3. Mail server IP is blacklisted');
+                    console.error('    4. DNS/MX records misconfigured');
+                    console.error('    Solutions:');
+                    console.error('    - Test with a working email (Gmail, Outlook) to verify SendGrid works');
+                    console.error('    - Check MX records: nslookup -type=MX kns.edu.sl');
+                    console.error('    - Verify mail server accepts connections on port 25');
+                    console.error('    - Consider using email forwarding service\n');
                 });
         }
         
@@ -2278,7 +2157,6 @@ Submitted At: ${new Date().toISOString()}
     }
 });
 
-// Get all scholarship applications (for admin - you may want to add authentication)
 app.get('/api/scholarship-applications', async (req, res) => {
     const { scholarship_id, status } = req.query;
     
@@ -2306,14 +2184,13 @@ app.get('/api/scholarship-applications', async (req, res) => {
     res.json({ success: true, applications: data || [] });
 });
 
-// Get statistics (for admin dashboard)
 app.get('/api/stats', async (req, res) => {
     try {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const sevenDaysAgoISO = sevenDaysAgo.toISOString();
         
-        // Get total counts
+        // totals across tables
         const [totalMessagesResult, totalContactsResult, totalEnrollmentsResult, totalPaymentsResult] = await Promise.all([
             supabase.from('messages').select('id', { count: 'exact', head: true }),
             supabase.from('contacts').select('id', { count: 'exact', head: true }),
@@ -2321,7 +2198,7 @@ app.get('/api/stats', async (req, res) => {
             supabase.from('payments').select('id', { count: 'exact', head: true })
         ]);
         
-        // Get recent counts (last 7 days)
+        // last 7 days
         const [recentMessagesResult, recentContactsResult, recentEnrollmentsResult, recentPaymentsResult] = await Promise.all([
             supabase.from('messages').select('id', { count: 'exact', head: true }).gte('timestamp', sevenDaysAgoISO),
             supabase.from('contacts').select('id', { count: 'exact', head: true }).gte('timestamp', sevenDaysAgoISO),
@@ -2347,7 +2224,6 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
-// Catch-all handler for unmatched API routes
 app.use('/api/*', (req, res) => {
     console.error(`[${new Date().toISOString()}] UNMATCHED API ROUTE: ${req.method} ${req.path}`);
     console.error(`  Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
@@ -2389,7 +2265,6 @@ app.use('/api/*', (req, res) => {
     });
 });
 
-// Monime may POST to success/cancel URLs; static files only allow GET — redirect POST to GET
 app.post(
     ['/checkout-success.html', '/checkout-cancelled.html', '/payment-success.html', '/payment-cancelled.html'],
     (req, res) => {
@@ -2398,8 +2273,6 @@ app.post(
     }
 );
 
-// Serve static files (HTML, CSS, JS) from root directory
-// IMPORTANT: This must come AFTER all API routes to prevent conflicts
 app.use(express.static(__dirname));
 
 app.use('/scholarships', express.static('scholarships', {
@@ -2414,46 +2287,20 @@ app.use('/scholarships', express.static('scholarships', {
     }
 }));
 
-// Initialize database and start server
 let server;
 
 initDatabase()
     .then(() => {
-        // Log registered API routes for debugging
-        console.log('\n=== Registered API Routes ===');
-        const routes = [];
-        app._router.stack.forEach((middleware) => {
-            if (middleware.route) {
-                const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
-                routes.push(`${methods} ${middleware.route.path}`);
-            } else if (middleware.name === 'router') {
-                // Handle router middleware (like express.Router())
-                if (middleware.regexp) {
-                    routes.push(`ROUTER ${middleware.regexp}`);
-                }
+        const onListen = () => {
+            const hostLabel = IS_IISNODE ? 'IIS/iisnode' : `http://0.0.0.0:${PORT}`;
+            console.log(`KNS API running (${hostLabel}, port ${PORT})`);
+            if (!IS_IISNODE) {
+                console.log('Render free tier: ping /api/health every 10-14 min if cold starts are a problem');
             }
-        });
-        routes.forEach(route => console.log(`  ${route}`));
-        
-        // Specifically check for scholarships route
-        const hasScholarshipsRoute = routes.some(r => r.includes('/api/scholarships'));
-        console.log(`\nScholarships route registered: ${hasScholarshipsRoute ? 'YES ✓' : 'NO ✗'}`);
-        console.log('=============================\n');
-        
-        // Bind to 0.0.0.0 to accept connections from all interfaces (required for containers)
-        server = app.listen(PORT, '0.0.0.0', () => {
-            const startupTime = Date.now();
-            console.log(`KNS College API server running on http://0.0.0.0:${PORT}`);
-            console.log(`API endpoints available at http://0.0.0.0:${PORT}/api`);
-            console.log(`Using Supabase: ${supabaseUrl}`);
-            console.log(`\n💡 Tip: To prevent cold starts on Render free tier:`);
-            console.log(`   1. Set up a monitoring service (UptimeRobot, cron-job.org) to ping:`);
-            console.log(`      - https://kns-college-website.onrender.com/api/health`);
-            console.log(`      - Every 10-14 minutes (before 15min timeout)`);
-            console.log(`   2. Or upgrade to a paid plan for always-on service\n`);
-        });
-        
-        // Keep the process alive
+        };
+
+        server = IS_IISNODE ? app.listen(PORT, onListen) : app.listen(PORT, '0.0.0.0', onListen);
+
         server.on('error', (err) => {
             console.error('Server error:', err);
             process.exit(1);
@@ -2464,9 +2311,8 @@ initDatabase()
         process.exit(1);
     });
 
-// Graceful shutdown handlers
 const gracefulShutdown = (signal) => {
-    console.log(`\nReceived ${signal}. Shutting down server gracefully...`);
+    console.log(`Shutting down (${signal})…`);
     
     if (server) {
         server.close(() => {
@@ -2474,7 +2320,6 @@ const gracefulShutdown = (signal) => {
             process.exit(0);
         });
         
-        // Force close after 10 seconds
         setTimeout(() => {
             console.error('Forced shutdown after timeout');
             process.exit(1);
@@ -2487,13 +2332,11 @@ const gracefulShutdown = (signal) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
     gracefulShutdown('uncaughtException');
 });
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     gracefulShutdown('unhandledRejection');

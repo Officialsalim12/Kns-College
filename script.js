@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
-    /** Match styles.css: primary nav uses overlay below this width (tablets, Nest Hub, Surface Pro, iPad Pro). */
-    const NAV_OVERLAY_MAX_WIDTH = 1366;
+    // keep in sync with styles.css mobile breakpoint
+    const NAV_OVERLAY_MAX_WIDTH = 768;
 
     const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
     const mainNav = document.querySelector('.main-nav');
@@ -154,7 +154,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (applicationForm) {
         applicationForm.addEventListener('submit', function(e) {
-            // Form submitted
         });
     }
     

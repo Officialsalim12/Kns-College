@@ -3,16 +3,12 @@ function normalizeApiUrl(url) {
         return null;
     }
     
-    // Remove whitespace
     url = url.trim();
-    
-    // If URL already has protocol, return as-is
+
     if (url.startsWith('http://') || url.startsWith('https://')) {
         return url;
     }
-    
-    // If URL doesn't have protocol, add https://
-    // Remove leading slashes if present
+
     url = url.replace(/^\/+/, '');
     return 'https://' + url;
 }
@@ -77,7 +73,8 @@ function getApiBaseUrl() {
         return currentOrigin;
     }
 
-    if (currentOrigin.includes('kns.edu.sl') || currentOrigin.includes('www.kns.edu.sl')) {
+    // kns.edu.sl frontend → render API
+    if (currentOrigin.includes('kns.edu.sl')) {
         return KNS_DEFAULT_RENDER_API;
     }
 

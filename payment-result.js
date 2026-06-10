@@ -10,7 +10,7 @@
     }
 
     const params = new URLSearchParams(window.location.search);
-    const isSuccess = !document.body.classList.contains('page-checkout-result--cancelled');
+    const isSuccess = !document.body.classList.contains('page-payment-result--cancelled');
 
     let state = {
         course: safeDecode(params.get('course')),
@@ -62,6 +62,15 @@
         const checkoutNote = document.getElementById('payment-result-checkout-note');
         if (checkoutNote) checkoutNote.hidden = isApplication || !isSuccess;
 
+        const heroLead = document.querySelector('.payment-result-hero__lead');
+        if (heroLead && !isApplication) {
+            if (isSuccess) {
+                heroLead.textContent = 'Thank you — your USSD payment was received.';
+            } else {
+                heroLead.textContent = 'Your USSD payment was cancelled and no charges were made.';
+            }
+        }
+
         const retry = document.getElementById('payment-cancelled-retry');
         if (retry) {
             if (state.course) {
@@ -77,14 +86,16 @@
                     }
                 }
                 retry.setAttribute('href', href);
+                if (!isApplication) retry.textContent = 'Try USSD payment again';
             } else {
                 retry.setAttribute('href', isApplication ? 'payment.html' : 'online-courses.html');
+                if (!isApplication) retry.textContent = 'Return to online courses';
             }
         }
 
         if (state.course) {
             document.title =
-                (isSuccess ? 'Payment received' : 'Payment cancelled') +
+                (isSuccess ? 'Payment Successful' : 'Payment Cancelled') +
                 ' — ' +
                 state.course +
                 ' | KNS College';
@@ -93,12 +104,12 @@
         const loading = document.getElementById('payment-result-loading');
         if (loading) loading.hidden = true;
 
-        const card = document.querySelector('.checkout-result-card');
-        if (card) card.removeAttribute('aria-busy');
+        const modal = document.querySelector('.payment-result-modal');
+        if (modal) modal.removeAttribute('aria-busy');
     }
 
     function syncPaymentStatus() {
-        if (!isApplication || !state.reference) return;
+        if (state.source !== 'application' || !state.reference) return;
         if (typeof CONFIG === 'undefined' || !CONFIG.API_BASE_URL) return;
 
         const apiUrl = String(CONFIG.API_BASE_URL).replace(/\/+$/, '');

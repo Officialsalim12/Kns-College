@@ -1,4 +1,4 @@
-// Wait for config to load if it hasn't already
+// wait for CONFIG
 function waitForConfig(callback, maxAttempts = 10) {
     let attempts = 0;
     const checkConfig = () => {
@@ -19,46 +19,35 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
     
-    // Wait for CONFIG to be available (config.js should load first, but just in case)
     waitForConfig(async () => {
         await loadScholarships(scholarshipsGrid);
     });
 });
 
 async function loadScholarships(scholarshipsGrid) {
-    // Declare fullUrl outside try block so error handler can access it
     let fullUrl = '';
-    
+
     try {
-        // Get API base URL from config
-        // CONFIG should be loaded before this script (config.js must be included first)
         let apiBaseUrl;
         if (typeof CONFIG !== 'undefined' && CONFIG.API_BASE_URL) {
             apiBaseUrl = CONFIG.API_BASE_URL;
-            // Ensure it has a protocol
             if (!apiBaseUrl.startsWith('http://') && !apiBaseUrl.startsWith('https://')) {
-                console.warn('API_BASE_URL missing protocol, adding https://');
                 apiBaseUrl = 'https://' + apiBaseUrl.replace(/^\/+/, '');
             }
         } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') {
             apiBaseUrl = 'http://localhost:3000';
         } else {
-            // Fallback: Use Render backend if CONFIG is not available
             apiBaseUrl = 'https://kns-college-website.onrender.com';
-            console.warn('CONFIG not found, using fallback Render backend URL');
         }
         
         const endpoint = (typeof CONFIG !== 'undefined' && CONFIG.ENDPOINTS && CONFIG.ENDPOINTS.SCHOLARSHIPS)
             ? CONFIG.ENDPOINTS.SCHOLARSHIPS
             : '/api/scholarships';
         
-        // Ensure endpoint starts with /
         const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
-        // Ensure apiBaseUrl doesn't end with /
         const normalizedBaseUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
         fullUrl = `${normalizedBaseUrl}${normalizedEndpoint}`;
-        
-        // Validate URL before making request
+
         if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
             throw new Error(`Invalid API URL: ${fullUrl}. URL must start with http:// or https://`);
         }
@@ -69,11 +58,9 @@ async function loadScholarships(scholarshipsGrid) {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            // Add credentials for CORS if needed
             credentials: 'omit'
         });
         
-        // Check if response is ok before parsing JSON
         if (!response.ok) {
             const contentType = response.headers.get('content-type');
             let errorText = '';
@@ -81,12 +68,10 @@ async function loadScholarships(scholarshipsGrid) {
             
             try {
                 errorText = await response.text();
-                // Try to parse as JSON if content-type suggests it
                 if (contentType && contentType.includes('application/json')) {
                     errorJson = JSON.parse(errorText);
                 }
             } catch (parseError) {
-                // If parsing fails, use the text as-is
                 console.warn('Could not parse error response as JSON:', parseError);
             }
             
@@ -135,7 +120,7 @@ async function loadScholarships(scholarshipsGrid) {
             name: error.name
         });
         
-        // Provide more helpful error messages
+        // user-facing error copy
         let errorMessage = 'Unable to load scholarships. Please try again later.';
         let errorDetails = error.message;
         
@@ -166,26 +151,17 @@ function removePercentagesFromText(text) {
     
     let cleaned = text;
     
-    // Replace specific patterns first (most specific to least specific)
+    // strip % wording from award text
     cleaned = cleaned
-        // Handle "Fully funded and 60% discount on tuition fees"
         .replace(/Fully funded and \d+% discount on tuition fees/gi, 'Fully funded and partial funding on tuition fees')
         .replace(/fully funded and \d+% discount on tuition fees/gi, 'Fully funded and partial funding on tuition fees')
-        // Handle "60% discount on tuition fees"
         .replace(/\d+% discount on tuition fees/gi, 'partial funding on tuition fees')
-        // Handle "100% of tuition fees" or "100% tuition fee coverage"
         .replace(/100%\s*(of tuition fees|tuition fee coverage|coverage)/gi, 'fully funded')
-        // Handle "60% tuition fee discount" or "Minimum 60% tuition fee discount"
         .replace(/(Minimum\s+)?\d+% tuition fee discount/gi, 'partial funding')
-        // Handle "Covers 100% of tuition fees"
         .replace(/Covers \d+% of tuition fees/gi, 'Fully funded')
-        // Handle any remaining percentage with "discount"
         .replace(/\d+%\s*discount/gi, 'partial funding')
-        // Handle any remaining percentage with "coverage"
         .replace(/\d+%\s*coverage/gi, 'fully funded')
-        // Remove standalone percentages (like "60%" or "100%")
         .replace(/\b\d+%\b/g, '')
-        // Clean up extra spaces
         .replace(/\s+/g, ' ')
         .replace(/\s+and\s+/gi, ' and ')
         .trim();
@@ -197,7 +173,7 @@ function createScholarshipCard(scholarship) {
     const card = document.createElement('div');
     card.className = 'scholarship-card';
     
-    // Force deadline to 22 January 2026 at 11:59 PM (override API value)
+    // fixed deadline — override API
     const deadlineDate = new Date('2026-01-22T23:59:59');
     const formattedDeadline = deadlineDate.toLocaleDateString('en-US', {
         year: 'numeric',
@@ -207,7 +183,6 @@ function createScholarshipCard(scholarship) {
         minute: '2-digit'
     });
     
-    // Process award summary to remove percentages
     const cleanedAwardSummary = removePercentagesFromText(scholarship.award_summary);
     
     card.innerHTML = `
