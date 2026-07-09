@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const params = new URLSearchParams(window.location.search);
     const courseParam = params.get("course");
     const priceParam = params.get("price");
+    const amountMinorParam = params.get("amount_minor");
     const courseDisplay = document.getElementById("checkout-course-display");
     const priceDisplay = document.getElementById("checkout-price-display");
     const summaryTitle = document.getElementById("checkout-summary-title");
@@ -13,9 +14,15 @@ document.addEventListener("DOMContentLoaded", function () {
     let amountMinor =
         typeof CONFIG !== "undefined" && typeof CONFIG.CHECKOUT_AMOUNT_SLE_MINOR === "number"
             ? CONFIG.CHECKOUT_AMOUNT_SLE_MINOR
-            : 100000;
+            : 100;
+    
+    // Use amount_minor from URL if provided and valid
+    if (amountMinorParam && /^\d+$/.test(amountMinorParam)) {
+        amountMinor = parseInt(amountMinorParam, 10);
+    }
+    
     const defaultPriceLabel =
-        typeof CONFIG !== "undefined" && CONFIG.CHECKOUT_DISPLAY_PRICE ? CONFIG.CHECKOUT_DISPLAY_PRICE : "NLe 1000";
+        typeof CONFIG !== "undefined" && CONFIG.CHECKOUT_DISPLAY_PRICE ? CONFIG.CHECKOUT_DISPLAY_PRICE : "NLe1";
 
     const priceLabel = priceParam ? decodeURIComponent(priceParam) : defaultPriceLabel;
 
@@ -131,8 +138,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     : "kns-" + Date.now() + "-" + Math.random().toString(36).slice(2, 12);
 
             const returnQuery = "id=" + encodeURIComponent(idempotencyKey);
-            const successUrl = absoluteUrl("payment-success.html?" + returnQuery);
-            const cancelUrl = absoluteUrl("payment-cancelled.html?" + returnQuery);
+            const successUrl = CONFIG.API_BASE_URL.replace(/\/$/, "") + "/payment-success.html?" + returnQuery;
+            const cancelUrl = CONFIG.API_BASE_URL.replace(/\/$/, "") + "/payment-cancelled.html?" + returnQuery;
 
             const body = {
                 customerEmail: emailEl.value.trim(),
@@ -145,7 +152,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 cancelUrl: cancelUrl,
                 idempotencyKey: idempotencyKey,
                 amountMinor: amountMinor,
-                currency: CONFIG.CHECKOUT_CURRENCY || "SLE"
+                currency: CONFIG.CHECKOUT_CURRENCY || "SLE",
+                source: 'checkout' // Explicitly set source for online courses
             };
 
             if (payBtn) {

@@ -164,3 +164,26 @@ CREATE TABLE IF NOT EXISTS online_course_ratings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_online_course_ratings_course ON online_course_ratings (course_key);
+
+-- Insert training category
+INSERT INTO online_course_categories (slug, section_title, section_lead, sort_order)
+VALUES ('trainings', 'Professional Development Trainings', 'Short-term skill-building programs for immediate impact', 10)
+ON CONFLICT (slug) DO NOTHING;
+
+-- Insert Digital Skills Training course
+INSERT INTO online_courses (category_slug, course_key, display_title, enroll_course_name, price_label, structured_text, pace_text, amount_sle_minor, sort_order, is_active)
+VALUES ('trainings', 'digital-skills-training', 'Digital Skills Training', 'Digital Skills Training', 'Le 1,500', 'Gain practical digital skills while waiting for results', '1 Month', 150000, 1, TRUE)
+ON CONFLICT (course_key) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS training_registrations (
+    id BIGSERIAL PRIMARY KEY,
+    fullname TEXT NOT NULL,
+    gender TEXT NOT NULL,
+    age TEXT NOT NULL,
+    address TEXT NOT NULL,
+    whatsapp TEXT NOT NULL,
+    email TEXT,
+    ip_address TEXT,
+    user_agent TEXT,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

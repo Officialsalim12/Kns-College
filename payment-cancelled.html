@@ -73,15 +73,21 @@
 
                 <p id="payment-result-course-line" class="payment-result-course" hidden></p>
 
-                <div class="payment-result-highlight payment-result-highlight--cancelled" role="note">
+                <div id="payment-result-generic-highlight" class="payment-result-highlight payment-result-highlight--cancelled" role="note">
                     <p class="payment-result-highlight__text">
                         Your course is still available. You can enroll whenever you&apos;re ready.
                     </p>
                 </div>
 
+                <div id="payment-result-training-note" class="payment-result-highlight payment-result-highlight--cancelled" role="note" hidden>
+                    <p class="payment-result-highlight__text">
+                        Your training registration is still available. Complete payment to secure your spot in the Digital Skills Training.
+                    </p>
+                </div>
+
                 <div class="payment-result-actions payment-result-actions--stack">
                     <a id="payment-cancelled-retry" class="payment-result-btn payment-result-btn--outline payment-result-btn--primary" href="online-courses.html">Try again</a>
-                    <a class="payment-result-btn-link" href="online-courses.html">Browse courses</a>
+                    <a id="payment-cancelled-secondary" class="payment-result-btn-link" href="online-courses.html">Browse courses</a>
                 </div>
             </div>
         </div>

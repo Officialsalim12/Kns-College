@@ -104,11 +104,11 @@
         const courseKey = course.courseKey || '';
         const enrollName = course.enrollCourseName || courseKey;
         const title = course.displayTitle || courseKey;
-        const price = course.priceLabel || 'NLe 1000';
+        const price = course.priceLabel || 'NLe1';
         const amountMinor =
             course.amountSleMinor != null && Number.isFinite(Number(course.amountSleMinor))
                 ? Math.round(Number(course.amountSleMinor))
-                : 100000;
+                : 100;
 
         const card = document.createElement('div');
         card.className = 'online-course-card';

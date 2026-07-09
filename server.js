@@ -44,7 +44,8 @@ const db = require('./database/queries');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const sgMail = require('@sendgrid/mail');
+const brevo = require('@getbrevo/brevo');
+const { TransactionalEmailsApi } = brevo;
 const multer = require('multer');
 const {
     APPLICATION_FEE_SLE,
@@ -160,42 +161,35 @@ if (!isDbConfigured()) {
     }
 }
 
-const sendgridApiKey = process.env.SENDGRID_API_KEY 
-    ? process.env.SENDGRID_API_KEY.replace(/\r\n/g, '').replace(/\n/g, '').replace(/\r/g, '').trim() 
+const brevoApiKey = process.env.BREVO_API_KEY
+    ? process.env.BREVO_API_KEY.replace(/\r\n/g, '').replace(/\n/g, '').replace(/\r/g, '').trim()
     : null;
-const envFromEmail = process.env.SENDGRID_FROM_EMAIL;
-const verifiedSenderEmail = 'scholarships@kns.edu.sl';
-const sendgridFromEmail = (envFromEmail === verifiedSenderEmail) ? envFromEmail : verifiedSenderEmail;
-const sendgridToEmail =
-    process.env.SENDGRID_TO_EMAIL || sendgridFromEmail;
+const envFromEmail = process.env.BREVO_FROM_EMAIL;
+const verifiedSenderEmail = 'salim@kns.sl';
+const brevoFromEmail = (envFromEmail === verifiedSenderEmail) ? envFromEmail : verifiedSenderEmail;
+const brevoToEmail =
+    process.env.BREVO_TO_EMAIL || brevoFromEmail;
 
-if (!sendgridApiKey) {
+const apiInstance = new TransactionalEmailsApi();
+if (!brevoApiKey) {
     console.warn(
-        'Warning: SENDGRID_API_KEY is not set. Contact form emails will not be sent.'
+        'Warning: BREVO_API_KEY is not set. Contact form emails will not be sent.'
     );
 } else {
-    if (!sendgridApiKey.startsWith('SG.')) {
-        console.warn('SendGrid: API key should start with SG.');
-    }
-
-    const invalidChars = /[\r\n\t]/;
-    if (invalidChars.test(sendgridApiKey)) {
-        console.error('SendGrid: API key has stray newlines or tabs — fix it in Render env vars');
-    } else {
-        try {
-            sgMail.setApiKey(sendgridApiKey);
-            console.log('SendGrid:');
-            console.log(`  from: ${sendgridFromEmail}`);
-            if (envFromEmail && envFromEmail !== verifiedSenderEmail) {
-                console.warn(`  SENDGRID_FROM_EMAIL was ${envFromEmail}; using ${verifiedSenderEmail}`);
-            }
-            console.log(`  default to: ${sendgridToEmail}`);
-            console.log(`  scholarships: ${process.env.SENDGRID_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com'}`);
-            console.log(`  contact: ${process.env.SENDGRID_CONTACT_EMAIL || 'admissions@kns.edu.sl'}`);
-            console.log(`  enquiry: ${process.env.SENDGRID_ENQUIRY_EMAIL || 'enquiry@kns.edu.sl'}\n`);
-        } catch (error) {
-            console.error('SendGrid: could not set API key —', error.message);
+    try {
+        apiInstance.authentications.apiKey.apiKey = brevoApiKey;
+        console.log('Brevo:');
+        console.log(`  from: ${brevoFromEmail}`);
+        if (envFromEmail && envFromEmail !== verifiedSenderEmail) {
+            console.warn(`  BREVO_FROM_EMAIL was ${envFromEmail}; using ${verifiedSenderEmail}`);
         }
+        console.log(`  default to: ${brevoToEmail}`);
+        console.log(`  scholarships: ${process.env.BREVO_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com'}`);
+        console.log(`  contact: ${process.env.BREVO_CONTACT_EMAIL || 'admissions@kns.edu.sl'}`);
+        console.log(`  enquiry: ${process.env.BREVO_ENQUIRY_EMAIL || 'enquiry@kns.edu.sl'}`);
+        console.log(`  training: ${process.env.BREVO_TRAINING_EMAIL || 'admissions@kns.edu.sl'}\n`);
+    } catch (error) {
+        console.error('Brevo: could not set API key —', error.message);
     }
 }
 
@@ -300,10 +294,73 @@ const formRateLimiter = rateLimit({
     message: { success: false, error: 'Too many form submissions. Please try again later.' }
 });
 
+const paymentRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: IS_PRODUCTION ? 5 : 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+        return getClientIp(req) + ':' + (req.body?.customerEmail || 'unknown');
+    },
+    message: { success: false, error: 'Too many payment attempts. Please wait before trying again.' }
+});
+
+// In-memory suspicious activity tracking
+const suspiciousActivity = new Map();
+
+function trackSuspiciousActivity(ip, type, details = {}) {
+    const key = `${ip}:${type}`;
+    const now = Date.now();
+    const entry = suspiciousActivity.get(key) || { count: 0, firstSeen: now, details: [] };
+    
+    entry.count++;
+    entry.lastSeen = now;
+    entry.details.push({ timestamp: now, ...details });
+    
+    // Keep only last 10 details
+    if (entry.details.length > 10) {
+        entry.details = entry.details.slice(-10);
+    }
+    
+    suspiciousActivity.set(key, entry);
+    
+    // Log suspicious activity
+    if (entry.count >= 3) {
+        console.warn(`[Security] Suspicious activity detected: ${type} from IP ${ip}, count: ${entry.count}`);
+    }
+    
+    // Clean up old entries (older than 1 hour)
+    if (now - entry.firstSeen > 3600000) {
+        suspiciousActivity.delete(key);
+    }
+    
+    return entry.count;
+}
+
+function isIpBlocked(ip) {
+    const blockedTypes = ['invalid_email', 'invalid_phone', 'invalid_amount', 'duplicate_idempotency'];
+    for (const type of blockedTypes) {
+        const key = `${ip}:${type}`;
+        const entry = suspiciousActivity.get(key);
+        if (entry && entry.count >= 5 && (Date.now() - entry.lastSeen) < 1800000) {
+            console.warn(`[Security] IP ${ip} blocked due to excessive ${type} attempts`);
+            return true;
+        }
+    }
+    return false;
+}
+
 app.use('/api/', apiRateLimiter);
 
 app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store');
+    // Additional security headers
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('X-Frame-Options', 'DENY');
+    res.set('X-XSS-Protection', '1; mode=block');
+    res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
     next();
 });
 
@@ -332,9 +389,18 @@ const upload = multer({
 
 app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) {
+        const clientIp = getClientIp(req);
+        const userAgent = getUserAgent(req);
         console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+        console.log(`  IP: ${clientIp}`);
         console.log(`  Origin: ${req.headers.origin || 'none'}`);
         console.log(`  Referer: ${req.headers.referer || 'none'}`);
+        console.log(`  User-Agent: ${userAgent}`);
+        
+        // Log payment-related requests with additional details
+        if (req.path.includes('monime') || req.path.includes('payment')) {
+            console.log(`  [Payment Security] Request from ${clientIp} for ${req.path}`);
+        }
     }
     next();
 });
@@ -366,7 +432,7 @@ app.get('/api/health', (req, res) => {
         iisnode: IS_IISNODE,
         node_version: process.version,
         database_configured: isDbConfigured(),
-        sendgrid_configured: !!sendgridApiKey,
+        brevo_configured: !!brevoApiKey,
         monime_checkout_configured: !!(MONIME_ACCESS_TOKEN && MONIME_SPACE_ID),
         monime_token_mode: MONIME_TOKEN_MODE,
         monime_require_live_token: MONIME_REQUIRE_LIVE_TOKEN,
@@ -380,12 +446,12 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/test-email', requireAdminApiKey, async (req, res) => {
     const { to } = req.body;
-    const testRecipient = to || process.env.SENDGRID_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com';
+    const testRecipient = to || process.env.BREVO_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com';
     
-    if (!sendgridApiKey || !sendgridFromEmail) {
+    if (!brevoApiKey || !brevoFromEmail) {
         return res.status(500).json({ 
-            error: 'SendGrid not configured',
-            message: 'SENDGRID_API_KEY and SENDGRID_FROM_EMAIL must be set'
+            error: 'Brevo not configured',
+            message: 'BREVO_API_KEY and BREVO_FROM_EMAIL must be set'
         });
     }
     
@@ -394,8 +460,8 @@ app.post('/api/test-email', requireAdminApiKey, async (req, res) => {
         const testBody = `
 This is a test email from the KNS College API server.
 
-If you receive this, SendGrid is working.
-From: ${sendgridFromEmail}
+If you receive this, Brevo is working.
+From: ${brevoFromEmail}
 
 Server Details:
 - Timestamp: ${new Date().toISOString()}
@@ -405,29 +471,28 @@ Server Details:
 You can safely delete this test email.
         `.trim();
         
-        const msg = {
-            to: testRecipient,
-            from: sendgridFromEmail,
-            subject: testSubject,
-            text: testBody,
-            html: `<p>${testBody.replace(/\n/g, '<br>')}</p>`
-        };
+        const sendSmtpEmail = new brevo.SendSmtpEmail();
+        sendSmtpEmail.to = [{ email: testRecipient }];
+        sendSmtpEmail.sender = { email: brevoFromEmail, name: 'KNS College' };
+        sendSmtpEmail.subject = testSubject;
+        sendSmtpEmail.textContent = testBody;
+        sendSmtpEmail.htmlContent = `<p>${testBody.replace(/\n/g, '<br>')}</p>`;
         
         console.log('Sending test email…');
-        console.log(`  From: ${sendgridFromEmail}`);
+        console.log(`  From: ${brevoFromEmail}`);
         console.log(`  To: ${testRecipient}`);
         
-        const response = await sgMail.send(msg);
+        const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
         
         console.log('Test email sent successfully');
-        console.log(`  SendGrid Status: ${response[0]?.statusCode || 'Success'}`);
+        console.log(`  Brevo Status: ${response?.messageId || 'Success'}`);
         
         res.json({ 
             success: true,
             message: 'Test email sent successfully',
-            from: sendgridFromEmail,
+            from: brevoFromEmail,
             to: testRecipient,
-            sendgrid_status: response[0]?.statusCode || 'Success',
+            brevo_status: response?.messageId || 'Success',
             note: 'Check your inbox (and spam folder) for the email'
         });
     } catch (error) {
@@ -445,7 +510,7 @@ You can safely delete this test email.
             error: 'Failed to send test email',
             details: error.message || 'Unknown error',
             status_code: error.code || error.response?.statusCode,
-            sendgrid_errors: error.response?.body?.errors || null
+            brevo_errors: error.response?.body?.errors || null
         });
     }
 });
@@ -749,8 +814,17 @@ async function lookupOnlineCourseAmountSleMinor(courseNameTrimmed) {
     return null;
 }
 
-app.post('/api/monime/checkout-session', formRateLimiter, async (req, res) => {
+app.post('/api/monime/checkout-session', paymentRateLimiter, async (req, res) => {
     try {
+        const clientIp = getClientIp(req);
+        
+        // Check if IP is blocked due to suspicious activity
+        if (isIpBlocked(clientIp)) {
+            return res.status(429).json({
+                success: false,
+                error: 'Too many suspicious attempts. Please try again later or contact support.'
+            });
+        }
         if (!MONIME_ACCESS_TOKEN || !MONIME_SPACE_ID) {
             return res.status(503).json({
                 success: false,
@@ -783,11 +857,61 @@ app.post('/api/monime/checkout-session', formRateLimiter, async (req, res) => {
             currency
         } = req.body || {};
 
+        // Enhanced input validation
         if (!customerEmail || !fullName || !phone || !courseName) {
             return res.status(400).json({
                 success: false,
                 error: 'Missing required fields: customerEmail, fullName, phone, and courseName are required.'
             });
+        }
+
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(customerEmail)) {
+            trackSuspiciousActivity(clientIp, 'invalid_email', { email: customerEmail });
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid email address format.'
+            });
+        }
+
+        // Phone validation - basic format check for Sierra Leone numbers
+        const phoneCleaned = String(phone).replace(/[\s\-\(\)]/g, '');
+        if (!/^\+?232\d{8}$/.test(phoneCleaned) && !/^\d{8,15}$/.test(phoneCleaned)) {
+            trackSuspiciousActivity(clientIp, 'invalid_phone', { phone: phone });
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid phone number format. Please provide a valid phone number.'
+            });
+        }
+
+        // Name validation - prevent injection and limit length
+        const nameCleaned = String(fullName).trim();
+        if (nameCleaned.length < 2 || nameCleaned.length > 100) {
+            return res.status(400).json({
+                success: false,
+                error: 'Full name must be between 2 and 100 characters.'
+            });
+        }
+
+        // Course name validation
+        const courseCleaned = String(courseName).trim();
+        if (courseCleaned.length < 3 || courseCleaned.length > 200) {
+            return res.status(400).json({
+                success: false,
+                error: 'Course name must be between 3 and 200 characters.'
+            });
+        }
+
+        // Idempotency key validation
+        if (idempotencyKey) {
+            const idemCleaned = String(idempotencyKey).trim();
+            if (idemCleaned.length < 8 || idemCleaned.length > 128) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid idempotency key format.'
+                });
+            }
         }
 
         const ccy = (currency || 'SLE').toString().slice(0, 3).toUpperCase();
@@ -827,6 +951,27 @@ app.post('/api/monime/checkout-session', formRateLimiter, async (req, res) => {
                 ? String(idempotencyKey).trim().slice(0, 64)
                 : crypto.randomUUID();
 
+        // Check for existing checkout session with same idempotency key
+        try {
+            const existingContext = await getCheckoutReturn(idem);
+            if (existingContext && existingContext.timestamp) {
+                const sessionAge = Date.now() - new Date(existingContext.timestamp).getTime();
+                // If session is less than 1 hour old, return existing session
+                if (sessionAge < 3600000) {
+                    console.warn(`[Security] Duplicate checkout attempt detected for idempotency key: ${idem}`);
+                    trackSuspiciousActivity(clientIp, 'duplicate_idempotency', { idempotencyKey: idem });
+                    return res.status(409).json({
+                        success: false,
+                        error: 'A payment session with this idempotency key already exists. Please wait or use a new session.',
+                        existingSession: true
+                    });
+                }
+            }
+        } catch (err) {
+            // If lookup fails, continue with new session
+            console.warn('[Security] Failed to check existing checkout context:', err.message);
+        }
+
         const lineItemName = String(courseName).trim().slice(0, 100);
         const sessionTitle = `KNS Online — ${lineItemName}`.slice(0, 150);
 
@@ -849,9 +994,9 @@ app.post('/api/monime/checkout-session', formRateLimiter, async (req, res) => {
             finalCancelUrl = short.cancelUrl;
             saveCheckoutReturn(idem, {
                 course: lineItemName,
-                price: String(priceLabel || 'NLe 1000'),
+                price: String(priceLabel || 'NLe1'),
                 amountMinor: amount,
-                source: 'checkout'
+                source: req.body.source || 'checkout'
             });
         }
 
@@ -1154,9 +1299,9 @@ app.post('/api/contacts', formRateLimiter, async (req, res) => {
     }
 
     // email admissions; don't block the JSON response
-    if (!sendgridApiKey || !sendgridFromEmail || !sendgridToEmail) {
+    if (!brevoApiKey || !brevoFromEmail || !brevoToEmail) {
         console.warn(
-            'Contact saved, but SendGrid is not fully configured. Skipping email send.'
+            'Contact saved, but Brevo is not fully configured. Skipping email send.'
         );
     } else {
         const subjectLine = `New contact form submission: ${subject || 'No subject'}`;
@@ -1190,33 +1335,31 @@ Submitted At: ${new Date().toISOString()}
             <p><strong>Submitted At:</strong> ${escapeHtml(new Date().toISOString())}</p>
         `;
 
-        const contactRecipientEmail = process.env.SENDGRID_CONTACT_EMAIL || 'admissions@kns.edu.sl';
+        const contactRecipientEmail = process.env.BREVO_CONTACT_EMAIL || 'admissions@kns.edu.sl';
         
-        const msg = {
-            to: contactRecipientEmail,
-            from: sendgridFromEmail,
-            subject: subjectLine,
-            text: textBody,
-            html: htmlBody,
-        };
+        const sendSmtpEmail = new brevo.SendSmtpEmail();
+        sendSmtpEmail.to = [{ email: contactRecipientEmail }];
+        sendSmtpEmail.sender = { email: brevoFromEmail, name: 'KNS College' };
+        sendSmtpEmail.subject = subjectLine;
+        sendSmtpEmail.textContent = textBody;
+        sendSmtpEmail.htmlContent = htmlBody;
 
         console.log(`Attempting to send contact form email...`);
-        console.log(`  From: ${sendgridFromEmail}`);
+        console.log(`  From: ${brevoFromEmail}`);
         console.log(`  To: ${contactRecipientEmail}`);
 
-        sgMail
-            .send(msg)
+        apiInstance.sendTransacEmail(sendSmtpEmail)
             .then((response) => {
-                console.log('Contact notification email sent via SendGrid');
-                console.log(`  From: ${sendgridFromEmail}`);
+                console.log('Contact notification email sent via Brevo');
+                console.log(`  From: ${brevoFromEmail}`);
                 console.log(`  To: ${contactRecipientEmail}`);
-                console.log(`  SendGrid Status: ${response[0]?.statusCode || 'Success'}`);
-                console.log(`  Note: SendGrid accepted the email (202), but delivery depends on recipient mail server.`);
+                console.log(`  Brevo Status: ${response?.messageId || 'Success'}`);
+                console.log(`  Note: Brevo accepted the email, but delivery depends on recipient mail server.`);
             })
             .catch((emailError) => {
-                console.error('Error sending contact email via SendGrid');
+                console.error('Error sending contact email via Brevo');
                 console.error(`  Status Code: ${emailError.code || emailError.response?.statusCode || 'Unknown'}`);
-                console.error(`  From Email: ${sendgridFromEmail}`);
+                console.error(`  From Email: ${brevoFromEmail}`);
                 
                 if (emailError.response?.body?.errors) {
                     emailError.response.body.errors.forEach((err, index) => {
@@ -1225,9 +1368,9 @@ Submitted At: ${new Date().toISOString()}
                 }
                 
                 if (emailError.code === 403 || emailError.response?.statusCode === 403) {
-                    console.error(' Sender email may not be verified in SendGrid. Run: node setup-sender.js');
+                    console.error(' Sender email may not be verified in Brevo. Check your Brevo account settings.');
                 } else {
-                    console.error('\n  If SendGrid accepts emails (202) but they show "Deferred" in Activity:');
+                    console.error('\n  If Brevo accepts emails but they show issues in Activity:');
                     console.error('    Check recipient mail server connectivity (see scholarship application handler for details)');
                 }
             });
@@ -1282,9 +1425,9 @@ app.post('/api/enquiries', formRateLimiter, async (req, res) => {
     }
 
     // email enquiry team in the background
-    if (!sendgridApiKey || !sendgridFromEmail || !sendgridToEmail) {
+    if (!brevoApiKey || !brevoFromEmail || !brevoToEmail) {
         console.warn(
-            'Enquiry saved, but SendGrid is not fully configured. Skipping email send.'
+            'Enquiry saved, but Brevo is not fully configured. Skipping email send.'
         );
     } else {
         const subjectLine = `New programme enquiry: ${programme_interest || 'No programme specified'}`;
@@ -1322,33 +1465,31 @@ Submitted At: ${new Date().toISOString()}
             <p><strong>Submitted At:</strong> ${escapeHtml(new Date().toISOString())}</p>
         `;
 
-        const enquiryRecipientEmail = process.env.SENDGRID_ENQUIRY_EMAIL || 'enquiry@kns.edu.sl';
+        const enquiryRecipientEmail = process.env.BREVO_ENQUIRY_EMAIL || 'enquiry@kns.edu.sl';
         
-        const msg = {
-            to: enquiryRecipientEmail,
-            from: sendgridFromEmail,
-            subject: subjectLine,
-            text: textBody,
-            html: htmlBody,
-        };
+        const sendSmtpEmail = new brevo.SendSmtpEmail();
+        sendSmtpEmail.to = [{ email: enquiryRecipientEmail }];
+        sendSmtpEmail.sender = { email: brevoFromEmail, name: 'KNS College' };
+        sendSmtpEmail.subject = subjectLine;
+        sendSmtpEmail.textContent = textBody;
+        sendSmtpEmail.htmlContent = htmlBody;
 
         console.log(`Attempting to send enquiry form email...`);
-        console.log(`  From: ${sendgridFromEmail}`);
+        console.log(`  From: ${brevoFromEmail}`);
         console.log(`  To: ${enquiryRecipientEmail}`);
 
-        sgMail
-            .send(msg)
+        apiInstance.sendTransacEmail(sendSmtpEmail)
             .then((response) => {
-                console.log('Enquiry notification email sent via SendGrid');
-                console.log(`  From: ${sendgridFromEmail}`);
+                console.log('Enquiry notification email sent via Brevo');
+                console.log(`  From: ${brevoFromEmail}`);
                 console.log(`  To: ${enquiryRecipientEmail}`);
-                console.log(`  SendGrid Status: ${response[0]?.statusCode || 'Success'}`);
-                console.log(`  Note: SendGrid accepted the email (202), but delivery depends on recipient mail server.`);
+                console.log(`  Brevo Status: ${response?.messageId || 'Success'}`);
+                console.log(`  Note: Brevo accepted the email, but delivery depends on recipient mail server.`);
             })
             .catch((emailError) => {
-                console.error('Error sending enquiry email via SendGrid');
+                console.error('Error sending enquiry email via Brevo');
                 console.error(`  Status Code: ${emailError.code || emailError.response?.statusCode || 'Unknown'}`);
-                console.error(`  From Email: ${sendgridFromEmail}`);
+                console.error(`  From Email: ${brevoFromEmail}`);
                 
                 if (emailError.response?.body?.errors) {
                     emailError.response.body.errors.forEach((err, index) => {
@@ -1357,9 +1498,9 @@ Submitted At: ${new Date().toISOString()}
                 }
                 
                 if (emailError.code === 403 || emailError.response?.statusCode === 403) {
-                    console.error(' Sender email may not be verified in SendGrid. Run: node setup-sender.js');
+                    console.error(' Sender email may not be verified in Brevo. Check your Brevo account settings.');
                 } else {
-                    console.error('\n  If SendGrid accepts emails (202) but they show "Deferred" in Activity:');
+                    console.error('\n  If Brevo accepts emails but they show issues in Activity:');
                     console.error('    Check recipient mail server connectivity (see scholarship application handler for details)');
                 }
             });
@@ -1380,6 +1521,120 @@ app.get('/api/enquiries', requireAdminApiKey, async (req, res) => {
         console.error('Error fetching enquiries:', error);
         return res.status(500).json({ error: 'Failed to fetch enquiries' });
     }
+});
+
+app.post('/api/training-registrations', formRateLimiter, async (req, res) => {
+    const { fullname, gender, age, address, whatsapp, email } = req.body;
+    
+    if (!fullname || !gender || !age || !address || !whatsapp) {
+        return res.status(400).json({ 
+            error: 'Missing required fields: fullname, gender, age, address, and whatsapp are required' 
+        });
+    }
+    
+    const ipAddress = getClientIp(req);
+    const userAgent = getUserAgent(req);
+    
+    try {
+        const data = await db.createTrainingRegistration({
+            fullname,
+            gender,
+            age,
+            address,
+            whatsapp,
+            email: email || null,
+            ip_address: ipAddress,
+            user_agent: userAgent
+        });
+    } catch (error) {
+        console.error('Error saving training registration:', error);
+        return res.status(500).json({
+            error: 'Failed to save training registration',
+            details: error.message || 'Unknown database error',
+            code: error.code
+        });
+    }
+
+    // email notifications - don't block the JSON response
+    if (brevoApiKey && brevoFromEmail) {
+        const subjectLine = `New Training Registration: ${fullname} - Digital Skills Training`;
+        
+        const textBody = `
+New training registration from KNS College website
+
+Registration Details:
+Name: ${fullname}
+Gender: ${gender}
+Age: ${age}
+Address: ${address}
+WhatsApp: ${whatsapp}
+Email: ${email || 'Not provided'}
+
+Training: One-Month Digital Skills Training
+Programme: Digital Literacy, Microsoft Word, Excel, PowerPoint, AI
+
+IP Address: ${ipAddress}
+User Agent: ${userAgent}
+Submitted At: ${new Date().toISOString()}
+`.trim();
+        
+        const htmlBody = `
+            <h2>New training registration from KNS College website</h2>
+            <h3>Registration Details</h3>
+            <p><strong>Name:</strong> ${escapeHtml(fullname)}</p>
+            <p><strong>Gender:</strong> ${escapeHtml(gender)}</p>
+            <p><strong>Age:</strong> ${escapeHtml(age)}</p>
+            <p><strong>Address:</strong> ${escapeHtml(address)}</p>
+            <p><strong>WhatsApp:</strong> ${escapeHtml(whatsapp)}</p>
+            <p><strong>Email:</strong> ${escapeHtml(email || 'Not provided')}</p>
+            
+            <h3>Training Information</h3>
+            <p><strong>Training:</strong> One-Month Digital Skills Training</p>
+            <p><strong>Programme:</strong> Digital Literacy, Microsoft Word, Excel, PowerPoint, AI</p>
+            
+            <hr>
+            <p><strong>IP Address:</strong> ${escapeHtml(ipAddress)}</p>
+            <p><strong>User Agent:</strong> ${escapeHtml(userAgent)}</p>
+            <p><strong>Submitted At:</strong> ${escapeHtml(new Date().toISOString())}</p>
+        `;
+        
+        const trainingRecipientEmail = process.env.BREVO_TRAINING_EMAIL || 'admissions@kns.edu.sl';
+        
+        const sendSmtpEmail = new brevo.SendSmtpEmail();
+        sendSmtpEmail.to = [{ email: trainingRecipientEmail }];
+        sendSmtpEmail.sender = { email: brevoFromEmail, name: 'KNS College' };
+        sendSmtpEmail.subject = subjectLine;
+        sendSmtpEmail.textContent = textBody;
+        sendSmtpEmail.htmlContent = htmlBody;
+        
+        console.log(`Attempting to send training registration email...`);
+        console.log(`  From: ${brevoFromEmail}`);
+        console.log(`  To: ${trainingRecipientEmail}`);
+        
+        apiInstance.sendTransacEmail(sendSmtpEmail)
+            .then((response) => {
+                console.log('Training registration notification email sent via Brevo');
+                console.log(`  From: ${brevoFromEmail}`);
+                console.log(`  To: ${trainingRecipientEmail}`);
+                console.log(`  Brevo Status: ${response?.messageId || 'Success'}`);
+            })
+            .catch((emailError) => {
+                console.error('Error sending training registration email via Brevo');
+                console.error(`  Status Code: ${emailError.code || emailError.response?.statusCode || 'Unknown'}`);
+                console.error(`  From Email: ${brevoFromEmail}`);
+                
+                if (emailError.response?.body?.errors) {
+                    emailError.response.body.errors.forEach((err, index) => {
+                        console.error(`  Error ${index + 1}:`, err.message || err);
+                    });
+                }
+            });
+    }
+    
+    res.json({ 
+        success: true, 
+        message: 'Training registration submitted successfully' 
+    });
 });
 
 app.post('/api/enrollments', formRateLimiter, async (req, res) => {
@@ -1916,7 +2171,7 @@ app.post('/api/scholarship-applications', formRateLimiter, async (req, res) => {
         }
 
         // notify scholarships inbox — don't hold the client
-        if (sendgridApiKey && sendgridFromEmail && sendgridToEmail) {
+        if (brevoApiKey && brevoFromEmail && brevoToEmail) {
             const subjectLine = `New Scholarship Application: ${programme} - ${first_name} ${surname}`;
             
             const textBody = `
@@ -2015,38 +2270,33 @@ Submitted At: ${new Date().toISOString()}
                 <p><strong>Submitted At:</strong> ${escapeHtml(new Date().toISOString())}</p>
             `;
             
-            const scholarshipRecipientEmail = process.env.SENDGRID_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com';
+            const scholarshipRecipientEmail = process.env.BREVO_SCHOLARSHIP_EMAIL || 'knscollegesle@gmail.com';
             
-            const msg = {
-                to: scholarshipRecipientEmail,
-                from: sendgridFromEmail,
-                subject: subjectLine,
-                text: textBody,
-                html: htmlBody,
-            };
+            const sendSmtpEmail = new brevo.SendSmtpEmail();
+            sendSmtpEmail.to = [{ email: scholarshipRecipientEmail }];
+            sendSmtpEmail.sender = { email: brevoFromEmail, name: 'KNS College' };
+            sendSmtpEmail.subject = subjectLine;
+            sendSmtpEmail.textContent = textBody;
+            sendSmtpEmail.htmlContent = htmlBody;
             
             console.log(`Attempting to send scholarship application email...`);
-            console.log(`  From: ${sendgridFromEmail}`);
+            console.log(`  From: ${brevoFromEmail}`);
             console.log(`  To: ${scholarshipRecipientEmail}`);
             console.log(`  Subject: ${subjectLine}`);
             
-            sgMail
-                .send(msg)
+            apiInstance.sendTransacEmail(sendSmtpEmail)
                 .then((response) => {
-                    console.log('Scholarship application notification email sent via SendGrid');
-                    console.log(`  From: ${sendgridFromEmail}`);
+                    console.log('Scholarship application notification email sent via Brevo');
+                    console.log(`  From: ${brevoFromEmail}`);
                     console.log(`  To: ${scholarshipRecipientEmail}`);
-                    console.log(`  SendGrid Status: ${response[0]?.statusCode || 'Success'}`);
-                    if (response[0]?.headers?.['x-message-id']) {
-                        console.log(`  Message ID: ${response[0].headers['x-message-id']}`);
-                    }
-                    console.log(`  Note: SendGrid accepted the email (202), but delivery depends on recipient mail server.`);
-                    console.log(`  If emails show "Deferred" in SendGrid Activity, check recipient mail server connectivity.`);
+                    console.log(`  Brevo Status: ${response?.messageId || 'Success'}`);
+                    console.log(`  Note: Brevo accepted the email, but delivery depends on recipient mail server.`);
+                    console.log(`  If emails show issues in Brevo Activity, check recipient mail server connectivity.`);
                 })
                 .catch((emailError) => {
-                    console.error('Error sending scholarship application email via SendGrid');
+                    console.error('Error sending scholarship application email via Brevo');
                     console.error(`  Status Code: ${emailError.code || emailError.response?.statusCode || 'Unknown'}`);
-                    console.error(`  From Email: ${sendgridFromEmail}`);
+                    console.error(`  From Email: ${brevoFromEmail}`);
                     console.error(`  To Email: ${scholarshipRecipientEmail}`);
                     
                     if (emailError.response) {
@@ -2058,25 +2308,24 @@ Submitted At: ${new Date().toISOString()}
                         }
                     }
                     
-                    // 403 = sender email not verified in SendGrid
+                    // 403 = sender email not verified in Brevo
                     if (emailError.code === 403 || emailError.response?.statusCode === 403) {
                         console.error('\n  🔧 Troubleshooting 403 Forbidden Error:');
-                        console.error('   1. Verify the sender email is verified in SendGrid:');
-                        console.error(`       - Go to SendGrid Dashboard > Settings > Sender Authentication`);
-                        console.error(`       - Verify that "${sendgridFromEmail}" is verified`);
-                        console.error(`    2. Run the setup script to verify sender: node setup-sender.js`);
-                        console.error('   3. Check API key permissions (needs "Mail Send" permission)');
-                        console.error('   4. For domain-based sending, ensure domain is authenticated\n');
+                        console.error('   1. Verify the sender email is verified in Brevo:');
+                        console.error(`       - Go to Brevo Dashboard > SMTP & Email > Senders`);
+                        console.error(`       - Verify that "${brevoFromEmail}" is verified`);
+                        console.error('   2. Check API key permissions (needs "Transactional Email" permission)');
+                        console.error('   3. For domain-based sending, ensure domain is authenticated\n');
                     } else if (emailError.code === 401 || emailError.response?.statusCode === 401) {
                         console.error('\n  🔧 Troubleshooting 401 Unauthorized Error:');
-                        console.error('   1. Check that SENDGRID_API_KEY is correct');
-                        console.error('   2. Verify the API key is active in SendGrid Dashboard\n');
+                        console.error('   1. Check that BREVO_API_KEY is correct');
+                        console.error('   2. Verify the API key is active in Brevo Dashboard\n');
                     } else {
                         console.error(`  Full Error:`, emailError.message || emailError);
                     }
                     
-                    // accepted (202) but their mail server may still defer
-                    console.error('\n  IMPORTANT: If SendGrid accepts emails (202 status) but they show "Deferred" in Activity:');
+                    // accepted but their mail server may still defer
+                    console.error('\n  IMPORTANT: If Brevo accepts emails but they show issues in Activity:');
                     console.error('    This indicates the recipient mail server cannot be reached.');
                     console.error('    Common causes:');
                     console.error('    1. Mail server is down or unreachable');
@@ -2259,6 +2508,22 @@ const gracefulShutdown = (signal) => {
         process.exit(0);
     }
 };
+
+// POST handlers for payment return pages (Monime POSTs to these URLs)
+app.post('/payment-success.html', express.urlencoded({ extended: false }), (req, res) => {
+    const query = new URLSearchParams(req.body).toString();
+    res.redirect(303, '/payment-success.html?' + query);
+});
+
+app.post('/payment-cancelled.html', express.urlencoded({ extended: false }), (req, res) => {
+    const query = new URLSearchParams(req.body).toString();
+    res.redirect(303, '/payment-cancelled.html?' + query);
+});
+
+app.post('/payment-failed.html', express.urlencoded({ extended: false }), (req, res) => {
+    const query = new URLSearchParams(req.body).toString();
+    res.redirect(303, '/payment-failed.html?' + query);
+});
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));

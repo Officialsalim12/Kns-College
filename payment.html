@@ -652,9 +652,9 @@
                 'customer_email': applicationData.email,
                 'customer_phone': applicationData.phone,
                 'reference': paymentReference,
-                'return_url': `${window.location.origin}/payment-success.html?ref=${encodeURIComponent(paymentReference)}`,
-                'cancel_url': `${window.location.origin}/payment-cancelled.html?ref=${encodeURIComponent(paymentReference)}`,
-                'error_url': `${window.location.origin}/payment-failed.html?ref=${encodeURIComponent(paymentReference)}&failed=1`,
+                'return_url': `${apiUrl}/payment-success.html?ref=${encodeURIComponent(paymentReference)}`,
+                'cancel_url': `${apiUrl}/payment-cancelled.html?ref=${encodeURIComponent(paymentReference)}`,
+                'error_url': `${apiUrl}/payment-failed.html?ref=${encodeURIComponent(paymentReference)}&failed=1`,
                 'metadata': JSON.stringify({
                     type: 'application',
                     course: applicationData.courseName,

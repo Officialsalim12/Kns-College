@@ -8,6 +8,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const mainContent = document.querySelector('.main-content');
     const body = document.body;
     
+    // Store scroll position when menu opens
+    let scrollPosition = 0;
+    
+    function lockBodyScroll() {
+        scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+        body.style.overflow = 'hidden';
+        body.style.position = 'fixed';
+        body.style.top = `-${scrollPosition}px`;
+        body.style.width = '100%';
+    }
+    
+    function unlockBodyScroll() {
+        body.style.overflow = '';
+        body.style.position = '';
+        body.style.top = '';
+        body.style.width = '';
+        window.scrollTo(0, scrollPosition);
+    }
+    
     if (mobileMenuToggle) {
         mobileMenuToggle.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -19,9 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             this.classList.toggle('active');
             if (mainNav && mainNav.classList.contains('active')) {
-                body.style.overflow = 'hidden';
+                lockBodyScroll();
             } else {
-                body.style.overflow = '';
+                unlockBodyScroll();
             }
         });
     }
@@ -34,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (mobileMenuToggle) {
                         mobileMenuToggle.classList.remove('active');
                     }
-                    body.style.overflow = '';
+                    unlockBodyScroll();
                 }
             }
             if (sidebar && sidebar.classList.contains('active')) {
@@ -43,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (mobileMenuToggle) {
                         mobileMenuToggle.classList.remove('active');
                     }
+                    unlockBodyScroll();
                 }
             }
         }
@@ -85,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (mobileMenuToggle) {
                         mobileMenuToggle.classList.remove('active');
                     }
-                    body.style.overflow = '';
+                    unlockBodyScroll();
                 }
             });
         });
@@ -99,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (mobileMenuToggle) {
                             mobileMenuToggle.classList.remove('active');
                         }
-                        body.style.overflow = '';
+                        unlockBodyScroll();
                     }, 100);
                 }
             });
@@ -113,6 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (mobileMenuToggle) {
                     mobileMenuToggle.classList.remove('active');
                 }
+                unlockBodyScroll();
             }
         });
     }
@@ -145,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (mobileMenuToggle) {
                     mobileMenuToggle.classList.remove('active');
                 }
-                body.style.overflow = '';
+                unlockBodyScroll();
             }
         }, 250);
     });
@@ -367,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 link.getAttribute('data-price-label') ||
                 (typeof CONFIG !== 'undefined' && CONFIG.CHECKOUT_DISPLAY_PRICE
                     ? CONFIG.CHECKOUT_DISPLAY_PRICE
-                    : 'NLe 1000');
+                    : 'NLe1');
             const am = link.getAttribute('data-amount-sle-minor');
             let href =
                 'checkout.html?course=' +

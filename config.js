@@ -65,8 +65,8 @@ function getApiBaseUrl() {
         if (/^http:\/\/(localhost|127\.0\.0\.1):3000$/i.test(currentOrigin)) {
             return currentOrigin;
         }
-        // Live Server on :5500 etc. — talk to local Node, not Render
-        return 'http://localhost:3000';
+        // Default to hosted API for local development
+        return KNS_DEFAULT_RENDER_API;
     }
 
     if (currentOrigin.includes('onrender.com') || currentOrigin.includes('kns-college-website')) {
@@ -137,9 +137,9 @@ const CONFIG = {
         ONLINE_COURSE_RATINGS: '/api/online-course-ratings'
     },
 
-    CHECKOUT_AMOUNT_SLE_MINOR: 100000,
+    CHECKOUT_AMOUNT_SLE_MINOR: 100,
     CHECKOUT_CURRENCY: 'SLE',
-    CHECKOUT_DISPLAY_PRICE: 'NLe 1000',
+    CHECKOUT_DISPLAY_PRICE: 'NLe1',
 
     buildApiUrl: function (path) {
         const base = (this.API_BASE_URL || '').replace(/\/+$/, '');

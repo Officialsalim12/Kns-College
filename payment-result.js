@@ -51,6 +51,17 @@
         amountMinor: params.get('amount_minor') || ''
     };
 
+    // Detect training payments by checking if course is Digital Skills Training
+    if (state.course === 'Digital Skills Training') {
+        state.source = 'training';
+    }
+
+    // If source parameter is explicitly in URL, it takes precedence
+    const urlSource = params.get('source');
+    if (urlSource) {
+        state.source = urlSource;
+    }
+
     function feeLabel() {
         if (state.price) return state.price;
         if (state.cost && state.cost !== '0') return 'NLe ' + state.cost;
@@ -65,6 +76,9 @@
                 if (state.cost) href += '&cost=' + encodeURIComponent(state.cost);
                 return href;
             }
+            if (state.source === 'training') {
+                return 'digital-skills-registration.html';
+            }
             let href = 'checkout.html?course=' + encodeURIComponent(state.course);
             if (fee) href += '&price=' + encodeURIComponent(fee);
             if (state.amountMinor && /^\d+$/.test(String(state.amountMinor))) {
@@ -72,12 +86,14 @@
             }
             return href;
         }
+        if (state.source === 'training') return 'digital-skills-registration.html';
         return state.source === 'application' ? 'payment.html' : 'online-courses.html';
     }
 
     function applyUi() {
         const fee = feeLabel();
         const isApplication = state.source === 'application';
+        const isTraining = state.source === 'training';
 
         const line = document.getElementById('payment-result-course-line');
         if (line) {
@@ -110,6 +126,12 @@
         const checkoutNote = document.getElementById('payment-result-checkout-note');
         if (checkoutNote) checkoutNote.hidden = isApplication || !isSuccess;
 
+        const trainingNote = document.getElementById('payment-result-training-note');
+        if (trainingNote) trainingNote.hidden = !isTraining;
+
+        const genericHighlight = document.getElementById('payment-result-generic-highlight');
+        if (genericHighlight) genericHighlight.hidden = isTraining;
+
         const retry =
             document.getElementById('payment-cancelled-retry') ||
             document.getElementById('payment-failed-retry');
@@ -118,6 +140,30 @@
             if (!state.course) {
                 retry.textContent =
                     state.source === 'application' ? 'Return to application' : 'Browse courses';
+            }
+        }
+
+        const secondary = document.getElementById('payment-cancelled-secondary');
+        if (secondary) {
+            if (isTraining) {
+                secondary.setAttribute('href', 'trainings.html');
+                secondary.textContent = 'Training programs';
+            }
+        }
+
+        const successPrimary = document.getElementById('payment-success-primary');
+        if (successPrimary) {
+            if (isTraining) {
+                successPrimary.setAttribute('href', 'trainings.html');
+                successPrimary.textContent = 'Return to Trainings';
+            }
+        }
+
+        const successSecondary = document.getElementById('payment-success-secondary');
+        if (successSecondary) {
+            if (isTraining) {
+                successSecondary.setAttribute('href', 'trainings.html');
+                successSecondary.textContent = 'Training programs';
             }
         }
 
@@ -211,9 +257,12 @@
                     state.course = data.course || state.course;
                     state.price = data.price || state.price;
                     state.cost = data.cost || state.cost;
-                    state.source = data.source || state.source;
                     state.reference = data.reference || state.reference || returnId;
                     if (data.amountMinor != null) state.amountMinor = String(data.amountMinor);
+                    // Use server context source if available
+                    if (data.source) {
+                        state.source = data.source;
+                    }
                 }
             })
             .catch(() => {})

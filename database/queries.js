@@ -353,6 +353,16 @@ async function getCourseAmountByKey(courseKey) {
     return rows[0] || null;
 }
 
+async function createTrainingRegistration(row) {
+    const { rows } = await query(
+        `INSERT INTO training_registrations (fullname, gender, age, address, whatsapp, email, ip_address, user_agent)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [row.fullname, row.gender, row.age, row.address, row.whatsapp, row.email, row.ip_address, row.user_agent]
+    );
+    return rows[0];
+}
+
 module.exports = {
     isMissingRelation,
     countRows,
@@ -382,5 +392,6 @@ module.exports = {
     getRatingStarsForCourse,
     insertOnlineCourseRating,
     getCourseAmountByEnrollName,
-    getCourseAmountByKey
+    getCourseAmountByKey,
+    createTrainingRegistration
 };

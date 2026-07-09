@@ -7,8 +7,6 @@
     "build": "node -e \"console.log('no build step')\"",
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "setup-sender": "node setup-sender.js",
-    "check-sender": "node setup-sender.js status",
     "prepare-deploy": "powershell -ExecutionPolicy Bypass -File scripts/prepare-deploy.ps1",
     "db:migrate": "node database/migrate.js",
     "db:seed": "node database/seed.js",
@@ -25,7 +23,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@sendgrid/mail": "^8.1.0",
+    "@getbrevo/brevo": "^2.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Digital Skills Registration - KNS College</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .registration-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .hero-banner {
+            background: linear-gradient(135deg, #1a4d7a 0%, #2d6ba3 100%);
+            color: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .hero-banner h1 {
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+        .hero-banner p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        .skills-list {
+            text-align: left;
+            margin: 1.5rem 0;
+            padding-left: 1rem;
+        }
+        .skills-list li {
+            margin-bottom: 0.5rem;
+        }
+        .special-offer {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        .special-offer h3 {
+            color: #856404;
+            margin-bottom: 0.5rem;
+        }
+        .special-offer .price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #dc3545;
+        }
+        .program-details {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        .program-details p {
+            margin-bottom: 0.75rem;
+        }
+        .award-badge {
+            background: linear-gradient(135deg, #ffd700 0%, #ffec8b 100%);
+            color: #333;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+            text-align: center;
+            font-weight: 600;
+        }
+        .contact-info {
+            background: #e7f3ff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        .contact-info p {
+            margin-bottom: 0.5rem;
+        }
+        .contact-info a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .form-section {
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 2rem 0;
+        }
+        .form-section h2 {
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        .form-group label .required {
+            color: #dc3545;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="tel"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(26, 77, 122, 0.1);
+        }
+        .radio-group {
+            display: flex;
+            gap: 2rem;
+            margin-top: 0.5rem;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .radio-option input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            margin: 0;
+            appearance: none;
+            -webkit-appearance: none;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            position: relative;
+        }
+        .radio-option input[type="radio"]:checked {
+            border-color: var(--primary-color);
+            background-color: var(--primary-color);
+        }
+        .radio-option input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background-color: white;
+            border-radius: 50%;
+        }
+        .btn-submit {
+            background: var(--primary-color);
+            color: #ffffff;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s ease;
+        }
+        .btn-submit:hover {
+            background: #1a4d7a;
+        }
+        .limited-spaces {
+            background: #ffebee;
+            border: 2px solid #ef5350;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+            text-align: center;
+            color: #c62828;
+            font-weight: 600;
+        }
+        .cta-message {
+            text-align: center;
+            margin: 2rem 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Header Navigation -->
+    <header class="top-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <a href="index.html" class="logo">
+                        <img src="images/kns-college-logo.png" alt="KNS College Logo" class="logo-image">
+                        <div class="logo-text-container">
+                            <span class="logo-text">Knowledge</span>
+                            <span class="logo-text">Network</span>
+                            <span class="logo-text">Solutions</span>
+                        </div>
+                    </a>
+                </div>
+                <nav class="main-nav">
+                    <ul class="nav-menu">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li class="has-dropdown">
+                            <a href="programmes.html">Programmes <span class="dropdown-arrow">▼</span></a>
+                            <ul class="dropdown-menu">
+                                <li><a href="programmes.html#train-certify">Train and Certify Courses</a></li>
+                                <li><a href="programmes.html#diploma">Diploma Programmes</a></li>
+                                <li><a href="programmes.html#certificate">Certificate Programmes</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="corporate-training.html">Corporate Training</a></li>
+                        <li><a href="trainings.html">Trainings</a></li>
+                        <li><a href="https://kns.fedena.com/student/admission1">Admissions</a></li>
+                        <li><a href="scholarships.html">Scholarships</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                    </ul>
+                </nav>
+                <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content-full">
+        <div class="container">
+            <div class="registration-container">
+                <!-- Hero Banner -->
+                <div class="hero-banner">
+                    <h1>DIGITAL SKILLS REGISTRATION FORM (WASSCE OR BECE GRADUATES)</h1>
+                    <h2>JUST FINISHED WASSCE OR BECE?</h2>
+                    <p>Don't spend the next few months doing nothing while waiting for your results. This is your opportunity to gain practical digital skills that will give you a head start for college, university, employment, and entrepreneurship.</p>
+                    
+                    <p><strong>Join the KNS College One-Month Digital Skills Training Programme and learn:</strong></p>
+                    <ul class="skills-list">
+                        <li>Digital Literacy</li>
+                        <li>Microsoft Word</li>
+                        <li>Microsoft Excel</li>
+                        <li>Microsoft PowerPoint</li>
+                        <li>Introduction to Artificial Intelligence (AI)</li>
+                    </ul>
+                    
+                    <p>In today's world, digital skills are no longer optional, but they are essential. Whether you dream of becoming a doctor, engineer, teacher, business owner, accountant, or ICT professional, these skills will help you succeed.</p>
+                    
+                    <p>Parents, this is a valuable investment in your child's future. Help them use their waiting period productively by acquiring skills that will benefit them for life.</p>
+                </div>
+
+                <!-- Special Offer -->
+                <div class="special-offer">
+                    <h3>Special Offer for WASSCE & BECE Graduates</h3>
+                    <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); border: 2px solid #ffc107; padding: 1rem; border-radius: 8px; margin-top: 1rem; cursor: pointer; transition: all 0.3s ease; transform: scale(1); animation: pulse 2s infinite;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(255, 193, 7, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                        <p style="margin: 0; font-size: 1.2rem; font-weight: 700; color: #dc3545; animation: shimmer 1.5s infinite;">💰 Only Le 1,500 (25% Discount)</p>
+                    </div>
+                </div>
+                <style>
+                    @keyframes pulse {
+                        0%, 100% { transform: scale(1); }
+                        50% { transform: scale(1.02); }
+                    }
+                    @keyframes shimmer {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.8; }
+                    }
+                </style>
+
+                <!-- Program Details -->
+                <div class="program-details">
+                    <p><strong>Start Date:</strong> 29 June 2026</p>
+                    <p><strong>Location:</strong> KNS College, 18 Dundas Street, Freetown</p>
+                </div>
+
+                <!-- Limited Spaces -->
+                <div class="limited-spaces">
+                    ⚠️ Limited spaces available. Registration is on a first-come, first-served basis.
+                </div>
+
+                <!-- Registration Form -->
+                <div class="form-section">
+                    <div style="margin-bottom: 1.5rem;">
+                        <a href="trainings.html" style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--primary-color); text-decoration: none; font-weight: 600;">
+                            ← Back to Trainings
+                        </a>
+                    </div>
+                    <h2>Registration Form</h2>
+                    
+                    <form id="registrationForm" action="contact-form-handler.js" method="POST">
+                        <div class="form-group">
+                            <label for="fullname">Fullname</label>
+                            <input type="text" id="fullname" name="fullname" placeholder="" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <div class="radio-group">
+                                <label class="radio-option" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" name="gender" value="male">
+                                    <span style="font-weight: normal;">Male</span>
+                                </label>
+                                <label class="radio-option" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" name="gender" value="female">
+                                    <span style="font-weight: normal;">Female</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="age">Age</label>
+                            <select id="age" name="age" required>
+                                <option value="">Select Age Range</option>
+                                <option value="12-15">12-15</option>
+                                <option value="16-20">16-20</option>
+                                <option value="21-25">21-25</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="address">Current Address</label>
+                            <textarea id="address" name="address" rows="3" placeholder="" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="whatsapp">WhatsApp Phone Number</label>
+                            <input type="tel" id="whatsapp" name="whatsapp" placeholder="" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" name="email" placeholder="">
+                        </div>
+
+                        <button type="submit" class="btn-submit">Submit</button>
+                    </form>
+                </div>
+
+                <!-- CTA Message -->
+                <div class="cta-message">
+                    Don't just wait for results. Build skills. Build confidence. Build your future.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="payment-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="payment-modal-content" style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; text-align: center; position: relative;">
+            <button id="closeModal" style="position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            <h2 style="color: var(--primary-color); margin-bottom: 1rem;">Complete Your Registration</h2>
+            <p style="margin-bottom: 1.5rem; color: #666;">Your registration has been submitted. Please complete the payment to confirm your spot in the Digital Skills Training.</p>
+            
+            <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); border: 2px solid #ffc107; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <p style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #dc3545;">💰 Le 1,500 (25% Off)</p>
+            </div>
+            
+            <button id="payNowBtn" class="btn-submit" style="margin-bottom: 1rem;">Pay Now</button>
+            <p style="font-size: 0.85rem; color: #888;">Secure payment powered by Monime</p>
+        </div>
+    </div>
+
+    <style>
+        body.modal-open {
+            overflow: hidden !important;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4 class="footer-title">Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="programmes.html">Programmes</a></li>
+                        <li><a href="trainings.html">Trainings</a></li>
+                        <li><a href="https://kns.fedena.com/student/admission1">Admissions</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4 class="footer-title">Campus Location</h4>
+                    <ul class="footer-links">
+                        <li>18 Dundas Street</li>
+                        <li>Freetown, Sierra Leone</li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4 class="footer-title">Resources</h4>
+                    <ul class="footer-links">
+                        <li><a href="https://kns.fedena.com/user/dashboard">Student Portal</a></li>
+                        <li><a href="https://kns.fedena.com/library">Library</a></li>
+                        <li><a href="https://kns.fedena.com/student/admission1">Admissions</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4 class="footer-title">Contact</h4>
+                    <ul class="footer-links">
+                        <li>Phone / WhatsApp: +232 79 442 442</li>
+                        <li>Email: admissions@kns.edu.sl</li>
+                        <li>Location: 18 Dundas Street, Freetown, Sierra Leone</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <div class="footer-legal">
+                    <a href="#">Privacy Policy</a>
+                    <span class="separator">|</span>
+                    <a href="#">Terms of Service</a>
+                    <span class="separator">|</span>
+                    <a href="#">Accessibility</a>
+                </div>
+                <p class="copyright">&copy; 2025 KNS College. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+    <script src="training-registration-handler.js"></script>
+</body>
+</html>
