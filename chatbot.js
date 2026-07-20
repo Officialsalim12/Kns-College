@@ -1,4 +1,8 @@
-document.addEventListener('DOMContentLoaded', function() {
+(function bootstrapChatbot() {
+    function startChatbot() {
+    if (window.__knsChatbotInitialized) return;
+    window.__knsChatbotInitialized = true;
+
     const courseDatabase = {
         diplomas: [
             { name: 'Diploma in Cybersecurity', keywords: ['cybersecurity', 'cyber security', 'security', 'isc2', 'cc'], type: 'diploma', duration: '2 Years', mode: 'Online / Hybrid' },
@@ -818,6 +822,13 @@ document.addEventListener('DOMContentLoaded', function() {
             attributeFilter: ['class']
         });
     }
-});
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startChatbot);
+    } else {
+        startChatbot();
+    }
+})();
 
 

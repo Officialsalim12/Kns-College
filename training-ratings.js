@@ -1,10 +1,7 @@
-(function () {    'use strict';
+(function () {
+    'use strict';
 
-    if (!document.body.classList.contains('page-online-courses')) {
-        return;
-    }
-
-    if (typeof CONFIG === 'undefined' || !CONFIG.API_BASE_URL || !CONFIG.ENDPOINTS?.ONLINE_COURSE_RATINGS) {
+    if (typeof CONFIG === 'undefined' || !CONFIG.API_BASE_URL || !CONFIG.ENDPOINTS || !CONFIG.ENDPOINTS.ONLINE_COURSE_RATINGS) {
         return;
     }
 
@@ -13,17 +10,35 @@
             ? CONFIG.buildApiUrl(CONFIG.ENDPOINTS.ONLINE_COURSE_RATINGS)
             : String(CONFIG.API_BASE_URL || '').replace(/\/+$/, '') + CONFIG.ENDPOINTS.ONLINE_COURSE_RATINGS;
 
+    const STAR_PATH = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
+
+    const modalRoot = document.getElementById('trainingRatingModalRoot');
+    const modalCourseName = document.getElementById('trainingRatingModalCourseName');
+    const starRow = document.getElementById('trainingRatingStarRow');
+    const commentEl = document.getElementById('trainingRatingComment');
+    const emailEl = document.getElementById('trainingRatingEmail');
+    const errorEl = document.getElementById('trainingRatingModalError');
+    const submitBtn = document.getElementById('trainingRatingSubmit');
+    const formPanel = document.getElementById('trainingRatingFormPanel');
+    const successPanel = document.getElementById('trainingRatingSuccessPanel');
+    const successDoneBtn = document.getElementById('trainingRatingSuccessDone');
+
+    let activeWorkshopKey = '';
+    let activeDisplayTitle = '';
+    let selectedStars = 0;
+    let lastFocus = null;
+
     function parseJsonResponse(res) {
-        return res.text().then((text) => {
+        return res.text().then(function (text) {
             let data = {};
             if (text) {
                 try {
                     data = JSON.parse(text);
-                } catch {
+                } catch (e) {
                     data = {};
                 }
             }
-            return { ok: res.ok, status: res.status, data };
+            return { ok: res.ok, status: res.status, data: data };
         });
     }
 
@@ -35,45 +50,9 @@
         return msg || 'We could not save your rating. Please try again later.';
     }
 
-    const modalRoot = document.getElementById('ocRatingModalRoot');
-    const modalCourseName = document.getElementById('ocRatingModalCourseName');
-    const starRow = document.getElementById('ocRatingStarRow');
-    const commentEl = document.getElementById('ocRatingComment');
-    const emailEl = document.getElementById('ocRatingEmail');
-    const errorEl = document.getElementById('ocRatingModalError');
-    const submitBtn = document.getElementById('ocRatingSubmit');
-    const formPanel = document.getElementById('ocRatingFormPanel');
-    const successPanel = document.getElementById('ocRatingSuccessPanel');
-    const successDoneBtn = document.getElementById('ocRatingSuccessDone');
-
-    let activeCourseKey = '';
-    let activeDisplayTitle = '';
-    let selectedStars = 0;
-    let lastFocus = null;
-
-    const STAR_PATH = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
-
-    function getCourseKeyFromCard(card) {
-        if (!card) return '';
-        const fromAttr = (card.getAttribute('data-course') || '').trim();
-        if (fromAttr) return fromAttr;
-        const keyed = card.querySelector('[data-course-key]');
-        if (keyed) {
-            const k = (keyed.getAttribute('data-course-key') || '').trim();
-            if (k) return k;
-        }
-        const named = card.querySelector('[data-course-name]');
-        if (named) {
-            const n = (named.getAttribute('data-course-name') || '').trim();
-            if (n) return n;
-        }
-        return '';
-    }
-
     function formatAverage(avg) {
-        if (avg == null || Number.isNaN(avg)) return '—';
-        const n = Number(avg);
-        return (Math.round(n * 10) / 10).toFixed(1);
+        if (avg == null || Number.isNaN(Number(avg))) return '—';
+        return (Math.round(Number(avg) * 10) / 10).toFixed(1);
     }
 
     function starsText(average) {
@@ -85,49 +64,61 @@
     }
 
     function applyStatsToCard(card, stats) {
-        const badge = card.querySelector('.online-course-card__badge');
-        if (!badge) return;
-        const avgEl = badge.querySelector('.online-course-card__badge-average');
-        const countWrap = badge.querySelector('.online-course-card__badge-count-wrap');
-        const countNum = badge.querySelector('.online-course-card__badge-count');
-        const starsEl = badge.querySelector('.online-course-card__stars');
+        const ratingEl = card.querySelector('[data-workshop-rating]');
+        if (!ratingEl) return;
+
+        const avgEl = ratingEl.querySelector('[data-rating-average]');
+        const starsEl = ratingEl.querySelector('[data-rating-stars]');
+        const countEl = ratingEl.querySelector('[data-rating-count]');
+
         if (!stats || !stats.count) {
             if (avgEl) avgEl.textContent = '—';
             if (starsEl) starsEl.textContent = '☆☆☆☆☆';
-            if (countWrap) countWrap.hidden = true;
-            if (countNum) countNum.textContent = '0';
-            badge.setAttribute('aria-label', 'Course rating: not yet rated');
+            if (countEl) {
+                countEl.textContent = '(0)';
+                countEl.hidden = true;
+            }
+            ratingEl.setAttribute('aria-label', 'Training rating: not yet rated');
             return;
         }
-        if (avgEl) avgEl.textContent = formatAverage(stats.average);
+
+        const avg = formatAverage(stats.average);
+        if (avgEl) avgEl.textContent = avg;
         if (starsEl) starsEl.textContent = starsText(stats.average);
-        if (countNum) countNum.textContent = String(stats.count);
-        if (countWrap) countWrap.hidden = false;
-        badge.setAttribute(
+        if (countEl) {
+            countEl.textContent = '(' + String(stats.count) + ')';
+            countEl.hidden = false;
+        }
+        ratingEl.setAttribute(
             'aria-label',
-            'Course rating: ' + formatAverage(stats.average) + ' out of 5, ' + stats.count + ' ratings'
+            'Training rating: ' + avg + ' out of 5, ' + stats.count + ' ratings'
         );
     }
 
     function fetchRatings() {
         return fetch(apiUrl, { method: 'GET', credentials: 'omit', mode: 'cors' })
             .then(parseJsonResponse)
-            .then((result) => {
+            .then(function (result) {
                 const byKey = {};
-                if (result.ok && result.data?.success && Array.isArray(result.data.ratings)) {
-                    result.data.ratings.forEach((r) => {
-                        if (r.course_key) byKey[r.course_key] = { average: r.average, count: r.count };
+                if (result.ok && result.data && result.data.success && Array.isArray(result.data.ratings)) {
+                    result.data.ratings.forEach(function (r) {
+                        if (r.course_key) {
+                            byKey[r.course_key] = { average: r.average, count: r.count };
+                        }
                     });
                 }
-                document.querySelectorAll('.online-course-card').forEach((card) => {
-                    const key = getCourseKeyFromCard(card);
+                document.querySelectorAll('.workshop-card[data-workshop-key]').forEach(function (card) {
+                    const key = card.getAttribute('data-workshop-key');
                     applyStatsToCard(card, key ? byKey[key] : null);
                 });
             })
-            .catch(() => {
-                document.querySelectorAll('.online-course-card').forEach((card) => {
+            .catch(function () {
+                document.querySelectorAll('.workshop-card[data-workshop-key]').forEach(function (card) {
                     applyStatsToCard(card, null);
                 });
+            })
+            .finally(function () {
+                document.dispatchEvent(new CustomEvent('kns-training-ratings-loaded'));
             });
     }
 
@@ -145,7 +136,15 @@
     function showRatingSuccess() {
         if (formPanel) formPanel.hidden = true;
         if (successPanel) successPanel.hidden = false;
-        successDoneBtn?.focus?.();
+        if (successDoneBtn && successDoneBtn.focus) successDoneBtn.focus();
+    }
+
+    function syncStarHighlight() {
+        if (!starRow) return;
+        starRow.querySelectorAll('.oc-rating-star').forEach(function (b) {
+            const v = parseInt(b.getAttribute('data-star-value'), 10);
+            b.classList.toggle('is-selected', v <= selectedStars);
+        });
     }
 
     function buildStarButtons() {
@@ -168,7 +167,7 @@
             path.setAttribute('fill', 'currentColor');
             svg.appendChild(path);
             btn.appendChild(svg);
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', function () {
                 selectedStars = value;
                 syncStarHighlight();
                 if (submitBtn) submitBtn.disabled = false;
@@ -177,19 +176,11 @@
         }
     }
 
-    function syncStarHighlight() {
-        if (!starRow) return;
-        starRow.querySelectorAll('.oc-rating-star').forEach((b) => {
-            const v = parseInt(b.getAttribute('data-star-value'), 10);
-            b.classList.toggle('is-selected', v <= selectedStars);
-        });
-    }
-
-    function openModal(courseKey, displayTitle) {
-        if (!modalRoot || !courseKey) return;
+    function openModal(workshopKey, displayTitle) {
+        if (!modalRoot || !workshopKey) return;
         lastFocus = document.activeElement;
-        activeCourseKey = courseKey;
-        activeDisplayTitle = displayTitle || courseKey;
+        activeWorkshopKey = workshopKey;
+        activeDisplayTitle = displayTitle || workshopKey;
         selectedStars = 0;
         if (modalCourseName) modalCourseName.textContent = activeDisplayTitle;
         if (commentEl) commentEl.value = '';
@@ -205,7 +196,8 @@
         } else {
             document.body.style.overflow = 'hidden';
         }
-        modalRoot.querySelector('.oc-rating-modal__close')?.focus?.();
+        const closeBtn = modalRoot.querySelector('.oc-rating-modal__close');
+        if (closeBtn && closeBtn.focus) closeBtn.focus();
     }
 
     function closeModal() {
@@ -217,28 +209,30 @@
         } else {
             document.body.style.overflow = '';
         }
-        activeCourseKey = '';
+        activeWorkshopKey = '';
         resetRatingView();
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submit rating';
         }
-        lastFocus?.focus?.();
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
     }
 
     function submitRating() {
-        if (!activeCourseKey || selectedStars < 1 || selectedStars > 5) return;
+        if (!activeWorkshopKey || selectedStars < 1 || selectedStars > 5) return;
         setModalError('');
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting…';
         }
+
         const body = {
-            courseKey: activeCourseKey,
+            courseKey: activeWorkshopKey,
             stars: selectedStars,
-            comment: commentEl?.value.trim() || undefined,
-            email: emailEl?.value.trim() || undefined
+            comment: commentEl && commentEl.value.trim() ? commentEl.value.trim() : undefined,
+            email: emailEl && emailEl.value.trim() ? emailEl.value.trim() : undefined
         };
+
         fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -247,17 +241,19 @@
             body: JSON.stringify(body)
         })
             .then(parseJsonResponse)
-            .then((result) => {
+            .then(function (result) {
                 if (submitBtn) submitBtn.textContent = 'Submit rating';
                 if (!result.ok) {
                     const serverMsg =
-                        result.data?.error ||
+                        (result.data && result.data.error) ||
                         (result.status >= 500 ? 'Server error (' + result.status + '). Try again later.' : null);
                     throw new Error(serverMsg || 'Could not save rating');
                 }
-                if (result.data?.rating) {
-                    const card = Array.from(document.querySelectorAll('.online-course-card')).find(
-                        (c) => getCourseKeyFromCard(c) === activeCourseKey
+                if (result.data && result.data.rating) {
+                    const card = Array.from(document.querySelectorAll('.workshop-card[data-workshop-key]')).find(
+                        function (c) {
+                            return c.getAttribute('data-workshop-key') === activeWorkshopKey;
+                        }
                     );
                     if (card) applyStatsToCard(card, result.data.rating);
                 }
@@ -267,7 +263,7 @@
                 }
                 showRatingSuccess();
             })
-            .catch((err) => {
+            .catch(function (err) {
                 setModalError(networkErrorMessage(err));
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -276,47 +272,37 @@
             });
     }
 
-    const categoryRoot = document.getElementById('onlineCoursesCategoryRoot');
-    if (categoryRoot) {
-        categoryRoot.addEventListener('click', (e) => {
-            const btn = e.target.closest?.('.online-course-card__rate-btn');
-            if (!btn) return;
-            const card = btn.closest('.online-course-card');
-            if (!card) return;
-            e.preventDefault();
-            e.stopPropagation();
-            const key = getCourseKeyFromCard(card);
-            if (!key) {
-                console.warn('Rate: missing course key on card');
-                return;
-            }
-            const title = card.querySelector('.online-course-title')?.textContent.trim() || key;
-            openModal(key, title);
-        });
-    }
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest && e.target.closest('.workshop-card__rate-btn');
+        if (!btn) return;
+        const card = btn.closest('.workshop-card');
+        if (!card) return;
+        e.preventDefault();
+        const key = card.getAttribute('data-workshop-key');
+        const title = (card.querySelector('.workshop-card__title') || {}).textContent || key;
+        openModal(key, String(title).trim());
+    });
 
     if (modalRoot) {
-        modalRoot.addEventListener('click', (e) => {
-            if (e.target.hasAttribute?.('data-oc-rating-close')) {
+        modalRoot.addEventListener('click', function (e) {
+            if (e.target.hasAttribute && e.target.hasAttribute('data-training-rating-close')) {
                 closeModal();
             }
         });
     }
 
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && modalRoot && !modalRoot.hidden) {
             closeModal();
         }
     });
 
-    submitBtn?.addEventListener('click', submitRating);
-    successDoneBtn?.addEventListener('click', closeModal);
+    if (submitBtn) submitBtn.addEventListener('click', submitRating);
+    if (successDoneBtn) successDoneBtn.addEventListener('click', closeModal);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', fetchRatings);
     } else {
         fetchRatings();
     }
-
-    document.addEventListener('kns-online-courses-loaded', fetchRatings);
 })();

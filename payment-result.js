@@ -31,6 +31,18 @@
 
     const params = new URLSearchParams(window.location.search);
 
+    if (document.body.classList.contains('page-payment-result--success')) {
+        try {
+            if (typeof KNSCart !== 'undefined' && KNSCart.clear) {
+                KNSCart.clear();
+            } else {
+                localStorage.removeItem('kns_online_cart_v1');
+            }
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
     if (
         document.body.classList.contains('page-payment-result--cancelled') &&
         isFailedReturn(params)

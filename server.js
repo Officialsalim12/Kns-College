@@ -854,14 +854,61 @@ app.post('/api/monime/checkout-session', paymentRateLimiter, async (req, res) =>
             returnOrigin: returnOriginBody,
             idempotencyKey,
             amountMinor,
-            currency
+            currency,
+            items: itemsBody
         } = req.body || {};
 
         // Enhanced input validation
-        if (!customerEmail || !fullName || !phone || !courseName) {
+        if (!customerEmail || !fullName || !phone) {
             return res.status(400).json({
                 success: false,
-                error: 'Missing required fields: customerEmail, fullName, phone, and courseName are required.'
+                error: 'Missing required fields: customerEmail, fullName, and phone are required.'
+            });
+        }
+
+        // Build course list: multi-item cart and/or legacy single courseName
+        const rawItems = Array.isArray(itemsBody) ? itemsBody : [];
+        let courseNames = [];
+        if (rawItems.length) {
+            rawItems.forEach((it) => {
+                if (!it || typeof it !== 'object') return;
+                const primary = String(it.courseName || it.enrollCourseName || '').trim();
+                const key = String(it.courseKey || '').trim();
+                // Prefer enroll/display name; keep key as fallback lookup token
+                if (primary) courseNames.push(primary);
+                else if (key) courseNames.push(key);
+                else return;
+                // Also stash key for secondary lookup if needed (handled below)
+                if (primary && key && primary !== key) {
+                    it._lookupKey = key;
+                }
+            });
+        }
+
+        if (!courseNames.length && courseName) {
+            courseNames = [String(courseName).trim()];
+        }
+
+        // Deduplicate while preserving order
+        const seenCourses = new Set();
+        courseNames = courseNames.filter((n) => {
+            const k = n.toLowerCase();
+            if (seenCourses.has(k)) return false;
+            seenCourses.add(k);
+            return true;
+        });
+
+        if (!courseNames.length) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: courseName or items[] with course names are required.'
+            });
+        }
+
+        if (courseNames.length > 20) {
+            return res.status(400).json({
+                success: false,
+                error: 'Too many courses in one checkout (maximum 20).'
             });
         }
 
@@ -895,12 +942,13 @@ app.post('/api/monime/checkout-session', paymentRateLimiter, async (req, res) =>
         }
 
         // Course name validation
-        const courseCleaned = String(courseName).trim();
-        if (courseCleaned.length < 3 || courseCleaned.length > 200) {
-            return res.status(400).json({
-                success: false,
-                error: 'Course name must be between 3 and 200 characters.'
-            });
+        for (const cn of courseNames) {
+            if (cn.length < 3 || cn.length > 200) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Each course name must be between 3 and 200 characters.'
+                });
+            }
         }
 
         // Idempotency key validation
@@ -927,23 +975,63 @@ app.post('/api/monime/checkout-session', paymentRateLimiter, async (req, res) =>
             });
         }
 
-        const courseNm = String(courseName).trim();
-        const catalogAmount = await lookupOnlineCourseAmountSleMinor(courseNm);
-        if (catalogAmount == null) {
-            return res.status(400).json({
-                success: false,
-                error: 'Unknown course. Enroll from the online courses catalog so pricing is validated server-side.'
+        const resolvedLineItems = [];
+        let amount = 0;
+        for (let i = 0; i < courseNames.length; i++) {
+            const courseNm = courseNames[i];
+            let catalogAmount = await lookupOnlineCourseAmountSleMinor(courseNm);
+            // Fallback: try matching course_key from the same cart item
+            if (catalogAmount == null && rawItems[i]) {
+                const keyFallback = String(
+                    rawItems[i].courseKey || rawItems[i]._lookupKey || ''
+                ).trim();
+                if (keyFallback && keyFallback !== courseNm) {
+                    catalogAmount = await lookupOnlineCourseAmountSleMinor(keyFallback);
+                }
+            }
+            // Training registration fallback when catalog row is missing
+            if (
+                catalogAmount == null &&
+                String(req.body.source || '') === 'training' &&
+                /digital\s*skills/i.test(courseNm)
+            ) {
+                catalogAmount =
+                    typeof clientAmount === 'number' && clientAmount >= 1 ? clientAmount : 100;
+                console.warn(
+                    `Training checkout: using client/fallback amount for "${courseNm}" (catalog miss)`
+                );
+            }
+            if (catalogAmount == null) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Unknown course "${courseNm}". Enroll from the online courses catalog so pricing is validated server-side.`
+                });
+            }
+            if (!Number.isInteger(catalogAmount) || catalogAmount < 1 || catalogAmount > 100000000) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Invalid charge amount for "${courseNm}". Check amount_sle_minor in the catalog.`
+                });
+            }
+            amount += catalogAmount;
+            resolvedLineItems.push({
+                type: 'custom',
+                name: courseNm.slice(0, 100),
+                quantity: 1,
+                price: { currency: 'SLE', value: catalogAmount }
             });
         }
-        const amount = catalogAmount;
+
         if (!Number.isInteger(amount) || amount < 1 || amount > 100000000) {
             return res.status(400).json({
                 success: false,
-                error: 'Invalid charge amount for this course. Check amount_sle_minor in Supabase (online_courses).'
+                error: 'Invalid total charge amount for this cart.'
             });
         }
         if (amount !== clientAmount) {
-            console.warn(`Checkout amount adjusted for ${courseNm}: client ${clientAmount} → catalog ${amount}`);
+            console.warn(
+                `Checkout amount adjusted for cart [${courseNames.join(', ')}]: client ${clientAmount} → catalog ${amount}`
+            );
         }
 
         const idem =
@@ -972,8 +1060,12 @@ app.post('/api/monime/checkout-session', paymentRateLimiter, async (req, res) =>
             console.warn('[Security] Failed to check existing checkout context:', err.message);
         }
 
-        const lineItemName = String(courseName).trim().slice(0, 100);
-        const sessionTitle = `KNS Online — ${lineItemName}`.slice(0, 150);
+        const primaryName = courseNames[0].slice(0, 100);
+        const sessionTitle =
+            courseNames.length === 1
+                ? `KNS Online — ${primaryName}`.slice(0, 150)
+                : `KNS Online — ${courseNames.length} courses`.slice(0, 150);
+        const coursesLabel = courseNames.join(', ').slice(0, 200);
 
         let returnOrigin = null;
         if (returnOriginBody) {
@@ -993,9 +1085,10 @@ app.post('/api/monime/checkout-session', paymentRateLimiter, async (req, res) =>
             finalSuccessUrl = short.successUrl;
             finalCancelUrl = short.cancelUrl;
             saveCheckoutReturn(idem, {
-                course: lineItemName,
+                course: coursesLabel,
                 price: String(priceLabel || 'NLe1'),
                 amountMinor: amount,
+                courses: courseNames,
                 source: req.body.source || 'checkout'
             });
         }
@@ -1027,14 +1120,7 @@ app.post('/api/monime/checkout-session', paymentRateLimiter, async (req, res) =>
             reference: `kns-enroll-${Date.now()}`.slice(0, 255),
             successUrl: finalSuccessUrl,
             cancelUrl: finalCancelUrl,
-            lineItems: [
-                {
-                    type: 'custom',
-                    name: lineItemName,
-                    quantity: 1,
-                    price: { currency: 'SLE', value: amount }
-                }
-            ],
+            lineItems: resolvedLineItems,
             paymentOptions: {
                 momo: { enabledProviders: ['m17', 'm18'] }
             },
@@ -1045,7 +1131,9 @@ app.post('/api/monime/checkout-session', paymentRateLimiter, async (req, res) =>
                 customer_email: String(customerEmail).trim().slice(0, 100),
                 customer_phone: String(phone).trim().slice(0, 100),
                 customer_name: String(fullName).trim().slice(0, 100),
-                course: lineItemName.slice(0, 100)
+                course: primaryName.slice(0, 100),
+                courses: coursesLabel.slice(0, 200),
+                item_count: String(courseNames.length)
             }
         };
 

@@ -6,8 +6,7 @@
     <title>Trainings - KNS College</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <!-- Top Header Navigation -->
+<body class="page-trainings">
     <header class="top-header">
         <div class="container">
             <div class="header-content">
@@ -50,9 +49,32 @@
         </div>
     </header>
 
-    <!-- Main Content -->
+    <div class="trainings-toolbar" role="search">
+        <div class="container trainings-toolbar__inner">
+            <div class="trainings-toolbar__search-wrap">
+                <label class="visually-hidden" for="workshopSearch">Search trainings</label>
+                <svg class="trainings-toolbar__search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                    type="search"
+                    id="workshopSearch"
+                    class="trainings-toolbar__search-input"
+                    placeholder="Search trainings…"
+                    autocomplete="off"
+                    enterkeyhint="search"
+                >
+            </div>
+            <div class="trainings-toolbar__chips workshop-filters" role="group" aria-label="Filter by price">
+                <button type="button" class="oc-filter-chip filter-btn is-active active" data-filter="all">All</button>
+                <button type="button" class="oc-filter-chip filter-btn" data-filter="free">Free</button>
+                <button type="button" class="oc-filter-chip filter-btn" data-filter="paid">Paid</button>
+            </div>
+        </div>
+    </div>
+
     <main class="main-content-full">
-        <!-- Page Header -->
         <section class="page-header">
             <div class="container">
                 <h1 class="page-title">Trainings</h1>
@@ -60,99 +82,73 @@
             </div>
         </section>
 
-        <!-- Workshops Content -->
-        <section class="content-section">
+        <section class="content-section trainings-catalog-section">
             <div class="container">
-                <div class="workshops-intro" style="display: block; text-align: center; width: 100%; margin: 0 auto;">
-                    <div class="intro-content" style="text-align: center; width: 100%; max-width: 100%; margin: 0 auto; display: block;">
-                        <h2 class="content-heading" style="text-align: center; width: 100%; margin: 0 auto 1.5rem;">Professional Development Trainings</h2>
-                        <p class="intro-text" style="text-align: center; max-width: 900px; margin: 0 auto 1.5rem; width: 100%; display: block;">
-                            Our workshops are designed to provide <strong>focused, practical training</strong> that you can immediately apply in your career or business. As the <strong>"Digital Skills Champion 2025"</strong> recognized by the Ministry of Communication, Technology & Innovation (MoCTI), KNS College offers intensive skill-building programs that fit your schedule and deliver measurable results.
-                        </p>
-                        <p class="intro-text" style="text-align: center; max-width: 900px; margin: 0 auto; width: 100%; display: block;">
-                            Whether you're looking to upgrade your skills, learn a new technology, or prepare for industry certifications, our workshops provide hands-on training led by certified instructors with real-world experience.
-                        </p>
+                <p id="workshopSearchEmpty" class="workshop-search-empty" hidden>No trainings match your search.</p>
+
+                <div id="trainingsCatalogLoader" class="catalog-loader" role="status" aria-live="polite" aria-label="Loading trainings">
+                    <div class="uib-loader" aria-hidden="true"></div>
+                </div>
+
+                <div id="trainingsCatalogContent" class="trainings-catalog" hidden>
+                    <div class="trainings-category-block free-workshops-section" data-section="free" hidden>
+                        <div class="trainings-category-block__head">
+                            <h2 class="trainings-category-block__title">Free Workshops</h2>
+                        </div>
+                        <div class="workshops-grid"></div>
                     </div>
-                </div>
 
-                <div class="benefits-section" style="text-align: center;">
-                    <h2 class="section-heading-center">Why Choose Our Trainings?</h2>
-                    <ul class="benefits-list" style="text-align: center; list-style: none; padding: 0; max-width: 900px; margin: 0 auto;">
-                        <li style="margin-bottom: 1rem; padding: 0.75rem;"><strong>Short Duration:</strong> Complete training in days or weeks, not months</li>
-                        <li style="margin-bottom: 1rem; padding: 0.75rem;"><strong>Hands-On Learning:</strong> Practical exercises and real-world projects</li>
-                        <li style="margin-bottom: 1rem; padding: 0.75rem;"><strong>Certification:</strong> Certificates issued upon workshop completion</li>
-                        <li style="margin-bottom: 1rem; padding: 0.75rem;"><strong>Expert Instructors:</strong> Learn from certified professionals with industry experience</li>
-                        <li style="margin-bottom: 1rem; padding: 0.75rem;"><strong>Small Class Sizes:</strong> Personalized attention and interactive learning</li>
-                        <li style="margin-bottom: 1rem; padding: 0.75rem;"><strong>Certification Fee:</strong> Charged separately for both free and paid workshops</li>
-                        <li style="margin-bottom: 1rem; padding: 0.75rem;"><strong>Immediate Application:</strong> Skills you can use right away in your job or business</li>
-                    </ul>
-                </div>
-
-                <!-- Filter Buttons -->
-                <div class="workshop-filters" style="text-align: center; margin: 3rem 0;">
-                    <button class="filter-btn active" data-filter="all" style="padding: 0.75rem 2rem; margin: 0 0.5rem; border: 2px solid var(--primary-color); background: var(--primary-color); color: #ffffff; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.3s ease;">All</button>
-                    <button class="filter-btn" data-filter="free" style="padding: 0.75rem 2rem; margin: 0 0.5rem; border: 2px solid #28a745; background: transparent; color: #28a745; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.3s ease;">Free</button>
-                    <button class="filter-btn" data-filter="paid" style="padding: 0.75rem 2rem; margin: 0 0.5rem; border: 2px solid var(--primary-color); background: transparent; color: var(--primary-color); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: all 0.3s ease;">Paid</button>
-                </div>
-
-                <!-- Free Workshops Section -->
-                <div class="free-workshops-section" data-section="free" style="text-align: center; margin: 3rem 0;">
-                    <h2 class="section-heading-center">Free Workshops</h2>
-                    <p class="content-text" style="text-align: center; max-width: 900px; margin: 0 auto;">Start learning at no cost with our introductory workshops designed to give you a taste of in-demand skills.</p>
-                    
-                    <div class="workshops-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem;">
-                    </div>
-                </div>
-
-                <!-- Paid Workshops Section -->
-                <div class="paid-workshops-section" data-section="paid" style="text-align: center; margin: 3rem 0;">
-                    <h2 class="section-heading-center">Paid Workshops</h2>
-                    <p class="content-text" style="text-align: center; max-width: 900px; margin: 0 auto;">Invest in your future with our comprehensive workshops that include certification preparation and hands-on projects.</p>
-                    
-                    <div class="workshops-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
-                        <div class="workshop-card" data-type="paid" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; text-align: center;">
-                            <div style="background: var(--primary-color); color: #ffffff; padding: 0.4rem 0.8rem; border-radius: 4px; display: inline-block; margin-bottom: 0.75rem; font-weight: 600; font-size: 0.85rem;">PAID</div>
-                            <h3 class="workshop-title" style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--primary-color);">One-Month Digital Skills Training</h3>
-                            <p class="workshop-description" style="margin-bottom: 0.75rem; line-height: 1.5; font-size: 0.9rem;">For WASSCE & BECE graduates. Gain practical skills while waiting for results.</p>
-                            <div class="workshop-details" style="margin-bottom: 0.75rem; font-size: 0.85rem; color: #666;">
-                                <p><strong>Duration:</strong> 1 Month</p>
-                                <p><strong>Skills:</strong> Digital Literacy, MS Office, AI</p>
-                            </div>
-                            <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); border: 2px solid #ffc107; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.75rem; width: fit-content; cursor: pointer; transition: all 0.3s ease; transform: scale(1); animation: pulse 2s infinite;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(255, 193, 7, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
-                                <p style="margin: 0; font-size: 0.875rem; font-weight: 700; color: #dc3545; animation: shimmer 1.5s infinite;">💰 NLe1</p>
-                            </div>
-                            <style>
-                                @keyframes pulse {
-                                    0%, 100% { transform: scale(1); }
-                                    50% { transform: scale(1.02); }
-                                }
-                                @keyframes shimmer {
-                                    0%, 100% { opacity: 1; }
-                                    50% { opacity: 0.8; }
-                                }
-                            </style>
-                            <a href="digital-skills-registration.html" class="btn btn-primary" style="display: inline-block; text-decoration: none; padding: 0.35rem 0.75rem; font-size: 0.8rem; width: 100%;">Register Now</a>
+                    <div class="trainings-category-block paid-workshops-section" data-section="paid">
+                        <div class="trainings-category-block__head">
+                            <h2 class="trainings-category-block__title">Paid Workshops</h2>
+                        </div>
+                        <div class="workshops-grid">
+                            <article
+                                class="workshop-card"
+                                data-type="paid"
+                                data-workshop-key="workshop:digital-skills-training"
+                            >
+                                <div class="workshop-card__media">
+                                    <img src="images/Digital-Literacy1.jpg" alt="Digital Skills Training" loading="lazy">
+                                    <span class="workshop-card__badge workshop-card__badge--paid">Paid</span>
+                                </div>
+                                <div class="workshop-card__body">
+                                    <h3 class="workshop-card__title">One-Month Digital Skills Training</h3>
+                                    <p class="workshop-card__instructor">KNS College</p>
+                                    <div class="workshop-card__rating" data-workshop-rating aria-label="Not yet rated">
+                                        <span class="workshop-card__rating-value" data-rating-average>—</span>
+                                        <span class="workshop-card__stars" data-rating-stars aria-hidden="true">☆☆☆☆☆</span>
+                                        <span class="workshop-card__rating-count" data-rating-count hidden>(0)</span>
+                                        <button type="button" class="workshop-card__rate-btn">Rate</button>
+                                    </div>
+                                    <p class="workshop-card__meta">1 Month · Digital Literacy, MS Office, AI</p>
+                                    <div class="workshop-card__price-row">
+                                        <p class="workshop-card__price">NLe 1</p>
+                                        <p class="workshop-card__price-original">NLe 1,500</p>
+                                    </div>
+                                    <div class="workshop-card__cta">
+                                        <a href="digital-skills-registration.html" class="btn btn-primary">Register Now</a>
+                                    </div>
+                                </div>
+                            </article>
                         </div>
                     </div>
                 </div>
 
-                <!-- Contact CTA -->
-                <div class="contact-highlight" style="background: linear-gradient(135deg, #1a4d7a 0%, #2d6ba3 100%); color: #ffffff; padding: 2rem; border-radius: 8px; margin: 3rem 0; display: block; text-align: center;">
-                    <h3 style="color: #ffffff; margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 600; text-align: center;">Ready to Enhance Your Skills?</h3>
-                    <p style="color: #ffffff; margin-bottom: 1.5rem; font-size: 1.05rem; line-height: 1.6; text-align: center;">Contact us to learn more about upcoming workshop schedules, pricing, and enrollment options.</p>
-                    <p style="color: #ffffff; font-size: 1.2rem; line-height: 2; text-align: center;">
-                        <strong style="color: #ffffff;">Phone / WhatsApp:</strong> +232 79 442 442<br>
-                        <strong style="color: #ffffff;">Email:</strong> training@kns.edu.sl<br>
-                        <strong style="color: #ffffff;">Website:</strong> kns.edu.sl<br>
-                        <strong style="color: #ffffff;">Location:</strong> 18 Dundas Street, Freetown, Sierra Leone
-                    </p>
+                <div class="trainings-contact-cta">
+                    <h3 class="trainings-contact-cta__title">Ready to Enhance Your Skills?</h3>
+                    <p class="trainings-contact-cta__lead">Contact us about schedules, pricing, and enrollment.</p>
+                    <ul class="trainings-contact-cta__list">
+                        <li><strong>Phone / WhatsApp:</strong> +232 79 422 442</li>
+                        <li><strong>Email:</strong> <a href="mailto:training@kns.edu.sl">training@kns.edu.sl</a></li>
+                        <li><strong>Location:</strong> 18 Dundas Street, Freetown, Sierra Leone</li>
+                    </ul>
+                    <a href="contact.html" class="btn btn-secondary trainings-contact-cta__btn">Contact us</a>
                 </div>
-
             </div>
         </section>
     </main>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="container">
             <div class="footer-content">
@@ -184,7 +180,7 @@
                 <div class="footer-section">
                     <h4 class="footer-title">Contact</h4>
                     <ul class="footer-links">
-                        <li>Phone / WhatsApp: +232 79 442 442</li>
+                        <li>Phone / WhatsApp: +232 79 422 442</li>
                         <li>Email: training@kns.edu.sl</li>
                         <li>Location: 18 Dundas Street, Freetown, Sierra Leone</li>
                     </ul>
@@ -198,14 +194,13 @@
                     <span class="separator">|</span>
                     <a href="#">Accessibility</a>
                 </div>
-                <p class="copyright">&copy; 2025 KNS College. All rights reserved.</p>
+                <p class="copyright">&copy; 2026 KNS College. All rights reserved.</p>
             </div>
         </div>
     </footer>
 
-    <!-- Fixed Side Buttons - Apply and Requirements -->
     <div class="side-buttons-container">
-        <a href="https://webportal.kns.edu.sl/register" target="_blank" class="side-btn side-btn-apply" title="Apply Now">
+        <a href="https://webportal.kns.edu.sl/register" target="_blank" rel="noopener" class="side-btn side-btn-apply" title="Apply Now">
             <span class="side-btn-text">Apply here</span>
             <svg class="side-btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M5 12h14M12 5l7 7-7 7"/>
@@ -226,64 +221,140 @@
         </a>
     </div>
 
+    <div id="trainingRatingModalRoot" class="oc-rating-modal-root" hidden aria-hidden="true">
+        <div class="oc-rating-modal-backdrop" data-training-rating-close tabindex="-1" aria-hidden="true"></div>
+        <div class="oc-rating-modal" role="dialog" aria-modal="true" aria-labelledby="trainingRatingModalTitle">
+            <button type="button" class="oc-rating-modal__close" data-training-rating-close aria-label="Close">&times;</button>
+            <h2 id="trainingRatingModalTitle" class="oc-rating-modal__title">Rate this training</h2>
+            <p class="oc-rating-modal__course" id="trainingRatingModalCourseName"></p>
+            <div id="trainingRatingFormPanel" class="oc-rating-modal__form-panel">
+                <p class="oc-rating-modal__label">Your rating</p>
+                <div class="oc-rating-stars" id="trainingRatingStarRow" role="group" aria-label="Star rating from 1 to 5"></div>
+                <label class="oc-rating-modal__field-label" for="trainingRatingComment">Comment (optional)</label>
+                <textarea id="trainingRatingComment" class="oc-rating-modal__textarea" rows="3" maxlength="2000" placeholder="What did you think of this training?"></textarea>
+                <label class="oc-rating-modal__field-label" for="trainingRatingEmail">Email (optional)</label>
+                <input type="email" id="trainingRatingEmail" class="oc-rating-modal__input" maxlength="200" placeholder="you@example.com" autocomplete="email">
+                <p class="oc-rating-modal__error" id="trainingRatingModalError" hidden role="alert"></p>
+                <div class="oc-rating-modal__actions">
+                    <button type="button" class="btn btn-secondary" data-training-rating-close>Cancel</button>
+                    <button type="button" class="btn btn-primary" id="trainingRatingSubmit" disabled>Submit rating</button>
+                </div>
+            </div>
+            <div id="trainingRatingSuccessPanel" class="oc-rating-modal__success" hidden role="status" aria-live="polite">
+                <div class="oc-rating-modal__success-icon" aria-hidden="true">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                </div>
+                <h3 class="oc-rating-modal__success-title">Thank you</h3>
+                <p class="oc-rating-modal__success-text">
+                    Your rating has been submitted successfully. We appreciate you taking the time to share your feedback with KNS College.
+                </p>
+                <button type="button" class="btn btn-primary oc-rating-modal__success-done" id="trainingRatingSuccessDone">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
     <script src="main.js"></script>
+    <script src="training-ratings.js"></script>
     <script>
-        // Workshop Filter Functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const filterButtons = document.querySelectorAll('.filter-btn');
+        document.addEventListener('DOMContentLoaded', function () {
+            const filterButtons = document.querySelectorAll('.workshop-filters .filter-btn');
             const workshopCards = document.querySelectorAll('.workshop-card');
+            const searchInput = document.getElementById('workshopSearch');
+            const emptyMessage = document.getElementById('workshopSearchEmpty');
+            const freeSection = document.querySelector('.free-workshops-section');
+            const paidSection = document.querySelector('.paid-workshops-section');
+            let activeFilter = 'all';
 
-            filterButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    // Remove active class from all buttons
-                    filterButtons.forEach(btn => {
-                        btn.classList.remove('active');
-                        btn.style.background = 'transparent';
-                        btn.style.color = btn.dataset.filter === 'free' ? '#28a745' : 'var(--primary-color)';
-                    });
+            function cardMatchesSearch(card, query) {
+                if (!query) return true;
+                return (card.textContent || '').toLowerCase().indexOf(query) !== -1;
+            }
 
-                    // Add active class to clicked button
-                    this.classList.add('active');
-                    const filter = this.dataset.filter;
-                    
-                    // Set active button style
-                    if (filter === 'all') {
-                        this.style.background = 'var(--primary-color)';
-                        this.style.color = '#ffffff';
-                    } else if (filter === 'free') {
-                        this.style.background = '#28a745';
-                        this.style.color = '#ffffff';
-                    } else if (filter === 'paid') {
-                        this.style.background = 'var(--primary-color)';
-                        this.style.color = '#ffffff';
-                    }
+            function sectionHasCards(section) {
+                return !!(section && section.querySelector('.workshop-card'));
+            }
 
-                    // Filter workshop cards
-                    workshopCards.forEach(card => {
-                        const cardType = card.dataset.type;
-                        if (filter === 'all' || cardType === filter) {
-                            card.style.display = 'block';
-                        } else {
-                            card.style.display = 'none';
-                        }
-                    });
+            function applyWorkshopFilters() {
+                const query = (searchInput && searchInput.value ? searchInput.value : '').trim().toLowerCase();
+                let visibleCount = 0;
+                let freeVisible = 0;
+                let paidVisible = 0;
 
-                    // Hide/show section headings based on filter
-                    const freeSection = document.querySelector('.free-workshops-section');
-                    const paidSection = document.querySelector('.paid-workshops-section');
-
-                    if (filter === 'all') {
-                        freeSection.style.display = 'block';
-                        paidSection.style.display = 'block';
-                    } else if (filter === 'free') {
-                        freeSection.style.display = 'block';
-                        paidSection.style.display = 'none';
-                    } else if (filter === 'paid') {
-                        freeSection.style.display = 'none';
-                        paidSection.style.display = 'block';
+                workshopCards.forEach(function (card) {
+                    const cardType = card.dataset.type;
+                    const matchesFilter = activeFilter === 'all' || cardType === activeFilter;
+                    const matchesSearch = cardMatchesSearch(card, query);
+                    const show = matchesFilter && matchesSearch;
+                    card.style.display = show ? '' : 'none';
+                    if (show) {
+                        visibleCount += 1;
+                        if (cardType === 'free') freeVisible += 1;
+                        if (cardType === 'paid') paidVisible += 1;
                     }
                 });
+
+                if (freeSection) {
+                    const showFree =
+                        sectionHasCards(freeSection) &&
+                        activeFilter !== 'paid' &&
+                        !(query && freeVisible === 0);
+                    freeSection.hidden = !showFree;
+                }
+                if (paidSection) {
+                    const showPaid =
+                        sectionHasCards(paidSection) &&
+                        activeFilter !== 'free' &&
+                        !(query && paidVisible === 0);
+                    paidSection.hidden = !showPaid;
+                }
+                if (emptyMessage) {
+                    emptyMessage.hidden = visibleCount > 0;
+                }
+            }
+
+            filterButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    filterButtons.forEach(function (btn) {
+                        btn.classList.remove('active', 'is-active');
+                    });
+                    this.classList.add('active', 'is-active');
+                    activeFilter = this.dataset.filter || 'all';
+                    applyWorkshopFilters();
+                });
             });
+
+            if (searchInput) {
+                searchInput.addEventListener('input', applyWorkshopFilters);
+            }
+
+            var loaderShownAt = Date.now();
+            var catalogRevealed = false;
+
+            function revealTrainingsCatalog() {
+                if (catalogRevealed) return;
+                catalogRevealed = true;
+                var loader = document.getElementById('trainingsCatalogLoader');
+                var content = document.getElementById('trainingsCatalogContent');
+                var minMs = 450;
+                var wait = Math.max(0, minMs - (Date.now() - loaderShownAt));
+
+                window.setTimeout(function () {
+                    if (loader) {
+                        loader.hidden = true;
+                        loader.setAttribute('aria-busy', 'false');
+                    }
+                    if (content) content.hidden = false;
+                    applyWorkshopFilters();
+                    if (typeof KNS !== 'undefined' && KNS.hideLoader) {
+                        KNS.hideLoader();
+                    }
+                    document.dispatchEvent(new CustomEvent('kns-training-catalog-ready'));
+                }, wait);
+            }
+
+            // Show spinner in the catalog slot first; swap to courses once ready
+            revealTrainingsCatalog();
         });
     </script>
 </body>

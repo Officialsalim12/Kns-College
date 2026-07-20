@@ -6,7 +6,7 @@
     <title>Payment Failed — KNS College</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="page-checkout page-checkout--v2 page-payment-result page-payment-result--failed">
+<body class="page-checkout page-checkout--v2 page-checkout--udemy page-payment-result page-payment-result--failed page-payment-result--udemy">
 
     <header class="top-header payment-result-backpage" aria-hidden="true">
         <div class="container">
@@ -28,14 +28,16 @@
     <main class="checkout-v2-main payment-result-backpage" aria-hidden="true">
         <section class="checkout-v2-hero">
             <div class="container">
+                <p class="checkout-v2-back">← Online courses</p>
                 <h1 class="checkout-v2-hero__title">Checkout</h1>
+                <p class="checkout-v2-hero__subtitle">Billing details and secure mobile money payment.</p>
             </div>
         </section>
         <section class="content-section checkout-v2-section">
             <div class="container">
-                <div class="checkout-v2-layout">
-                    <div class="checkout-v2-card checkout-v2-card--form payment-result-backpage__card"></div>
-                    <aside class="checkout-v2-card checkout-v2-card--summary payment-result-backpage__card"></aside>
+                <div class="checkout-v2-layout udemy-checkout-layout">
+                    <div class="checkout-v2-card checkout-v2-card--form udemy-checkout-billing payment-result-backpage__card"></div>
+                    <aside class="checkout-v2-card checkout-v2-card--summary udemy-checkout-summary payment-result-backpage__card"></aside>
                 </div>
             </div>
         </section>
@@ -69,7 +71,11 @@
             </header>
 
             <div id="payment-result-dialog-desc" class="payment-result-modal__body">
-                <p id="payment-result-loading" class="payment-result-loading">Loading…</p>
+                <p id="payment-result-loading" class="payment-result-loading">
+                    <span class="catalog-loader payment-result-catalog-loader" role="status" aria-live="polite" aria-label="Loading">
+                        <span class="uib-loader" aria-hidden="true"></span>
+                    </span>
+                </p>
 
                 <p id="payment-result-course-line" class="payment-result-course" hidden></p>
                 <p id="payment-result-reference-line" class="payment-result-reference" hidden></p>
@@ -89,6 +95,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="main.js"></script>
     <script src="payment-result.js"></script>
     <script src="payment-result-modal.js"></script>
 </body>

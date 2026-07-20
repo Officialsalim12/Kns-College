@@ -65,6 +65,13 @@
     dialog.addEventListener('keydown', trapFocus);
     document.addEventListener('keydown', onEscape);
 
+    if (typeof KNS !== 'undefined' && KNS.lockScroll) {
+        KNS.lockScroll('modal');
+    } else {
+        document.body.classList.add('kns-scroll-locked', 'kns-modal-open');
+        document.documentElement.classList.add('kns-scroll-locked');
+    }
+
     var closeBtn = dialog.querySelector('[data-payment-result-close]');
     if (closeBtn) {
         closeBtn.addEventListener('click', dismissTarget);
@@ -80,6 +87,9 @@
     window.addEventListener(
         'pagehide',
         function () {
+            if (typeof KNS !== 'undefined' && KNS.unlockScroll) {
+                KNS.unlockScroll('modal');
+            }
             if (lastFocused && typeof lastFocused.focus === 'function') {
                 try {
                     lastFocused.focus();

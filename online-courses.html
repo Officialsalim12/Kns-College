@@ -61,6 +61,14 @@
                 <button type="button" class="oc-filter-chip" data-online-category-filter="ict">ICT &amp; software</button>
                 <button type="button" class="oc-filter-chip" data-online-category-filter="microsoft">Microsoft &amp; Azure</button>
             </div>
+            <button type="button" class="oc-cart-btn" data-cart-open aria-label="Open shopping cart">
+                <svg class="oc-cart-btn__icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+                <span class="oc-cart-btn__label">Cart</span>
+                <span class="oc-cart-btn__badge" data-cart-badge hidden>0</span>
+            </button>
         </div>
     </div>
 
@@ -74,18 +82,14 @@
 
         <section class="content-section">
             <div class="container">
-                <div class="content-intro">
-                    <p class="content-text" style="text-align: center; margin-bottom: var(--spacing-lg); font-size: 1.1rem;">
-                        Access high-quality, instructor-led courses from anywhere using your computer, tablet, or smartphone. Learn at your own pace with engaging lessons, practical exercises, and real-world projects designed to help you gain valuable, job-ready skills. Enrolling is simple and secure. Choose your preferred course, click <strong>Enroll Now,</strong> and complete your payment instantly using <strong>Orange Money</strong> or <strong>Afrimoney</strong> via USSD. Once your payment is confirmed, you'll receive immediate access to your course and can start learning right away.
-                    </p>
-                </div>
-
                 <div class="program-category">
                     <p id="onlineCoursesFilterStatus" class="visually-hidden" role="status" aria-live="polite"></p>
                     <div id="onlineCoursesEmptyHint" class="online-courses-empty-hint" hidden>No courses match your search or filter.</div>
                     <p id="onlineCoursesCatalogError" class="online-courses-catalog-error" hidden role="alert"></p>
                     <div class="online-courses-categories" id="onlineCoursesCategoryRoot">
-                        <p class="online-courses-catalog-loading">Loading courses…</p>
+                        <div class="catalog-loader" role="status" aria-live="polite" aria-label="Loading courses">
+                            <div class="uib-loader" aria-hidden="true"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -198,8 +202,9 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="cart.js"></script>
+    <script src="main.js"></script>
     <script src="online-courses-catalog.js"></script>
     <script src="online-course-ratings.js"></script>
-    <script src="main.js"></script>
 </body>
 </html>

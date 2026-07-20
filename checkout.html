@@ -6,7 +6,7 @@
     <title>Checkout — KNS College</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="page-checkout page-checkout--v2">
+<body class="page-checkout page-checkout--v2 page-checkout--udemy">
     <header class="top-header">
         <div class="container">
             <div class="header-content">
@@ -50,60 +50,70 @@
     <main class="main-content-full checkout-v2-main">
         <section class="checkout-v2-hero">
             <div class="container">
-                <a class="checkout-v2-back" href="online-courses.html">← Online courses</a>
+                <a class="checkout-v2-back" href="online-courses.html">← Back to courses</a>
                 <h1 class="checkout-v2-hero__title">Checkout</h1>
-                <p class="checkout-v2-hero__subtitle">Review your course and details, then complete enrollment with secure mobile payment (Orange Money or Afrimoney).</p>
+                <p class="checkout-v2-hero__subtitle">Billing details and secure mobile money payment (Orange Money or Afrimoney).</p>
             </div>
         </section>
 
         <section class="content-section checkout-v2-section">
             <div class="container">
-                <div class="checkout-v2-layout">
-                    <div class="checkout-v2-card checkout-v2-card--form">
-                        <h2 class="checkout-v2-card__heading">Your information</h2>
+                <div id="checkout-empty" class="udemy-checkout-empty" hidden>
+                    <p>Your cart is empty.</p>
+                    <a href="online-courses.html" class="btn btn-primary">Browse online courses</a>
+                </div>
 
-                        <div class="checkout-v2-enrollment" aria-label="Enrollment selection">
-                            <div class="checkout-v2-enrollment__row">
-                                <span class="checkout-v2-enrollment__label">Course</span>
-                                <input type="text" id="checkout-course-display" class="checkout-v2-enrollment__input" readonly tabindex="-1" value="" aria-label="Selected course">
-                            </div>
-                            <div class="checkout-v2-enrollment__row">
-                                <span class="checkout-v2-enrollment__label">Fee</span>
-                                <input type="text" id="checkout-price-display" class="checkout-v2-enrollment__input checkout-v2-enrollment__input--price" readonly tabindex="-1" value="NLe1" aria-label="Course fee">
-                            </div>
-                        </div>
+                <div class="checkout-v2-layout udemy-checkout-layout" id="checkout-active">
+                    <div class="checkout-v2-card checkout-v2-card--form udemy-checkout-billing">
+                        <h2 class="checkout-v2-card__heading">Billing information</h2>
+                        <p class="checkout-v2-card__hint">We&apos;ll use these details for your enrollment confirmation.</p>
 
                         <form id="checkoutForm" class="checkout-v2-form" novalidate>
                             <div class="checkout-v2-field">
-                                <label for="checkout-fullname">Full name</label>
-                                <input id="checkout-fullname" name="fullname" type="text" placeholder="" autocomplete="name" required>
+                                <label for="checkout-fullname">Full name <span class="checkout-v2-req">*</span></label>
+                                <input id="checkout-fullname" name="fullname" type="text" autocomplete="name" required>
                             </div>
                             <div class="checkout-v2-field">
-                                <label for="checkout-email">Email</label>
-                                <input id="checkout-email" name="email" type="email" placeholder="" autocomplete="email" required>
+                                <label for="checkout-email">Email <span class="checkout-v2-req">*</span></label>
+                                <input id="checkout-email" name="email" type="email" autocomplete="email" required>
                             </div>
                             <div class="checkout-v2-field">
-                                <label for="checkout-phone">Phone number</label>
-                                <input id="checkout-phone" name="phone" type="tel" placeholder="" autocomplete="tel" required>
+                                <label for="checkout-phone">Phone number <span class="checkout-v2-req">*</span></label>
+                                <input id="checkout-phone" name="phone" type="tel" autocomplete="tel" required>
+                            </div>
+
+                            <div class="udemy-checkout-pay-methods" aria-label="Payment methods">
+                                <p class="udemy-checkout-pay-methods__label">Pay with</p>
+                                <div class="udemy-checkout-pay-methods__row">
+                                    <span class="udemy-checkout-pay-pill">Orange Money</span>
+                                    <span class="udemy-checkout-pay-pill">Afrimoney</span>
+                                </div>
                             </div>
 
                             <div id="checkout-error" class="checkout-v2-error" role="alert" hidden></div>
 
-                            <button type="submit" class="checkout-v2-submit" id="checkout-pay-btn">Complete enrollment</button>
+                            <button type="submit" class="checkout-v2-submit" id="checkout-pay-btn">Complete checkout</button>
+                            <p class="udemy-checkout-secure-note">Encrypted payment via Monime. You&apos;ll confirm on your phone with USSD.</p>
                         </form>
                     </div>
 
-                    <aside class="checkout-v2-card checkout-v2-card--summary" aria-label="Order summary">
-                        <div class="checkout-v2-summary__glow"></div>
-                        <p class="checkout-v2-summary__eyebrow">Enrollment</p>
-                        <h3 class="checkout-v2-summary__course" id="checkout-summary-title">Course</h3>
-                        <p class="checkout-v2-summary__price" id="checkout-price-line">NLe1</p>
-                        <ul class="checkout-v2-summary__list">
-                            <li>Official KNS online course enrollment</li>
-                            <li>Secure payment via Orange Money or Afrimoney</li>
-                            <li>Questions? <a href="mailto:admission@kns.edu.sl">admission@kns.edu.sl</a></li>
-                            <li>WhatsApp +232 79 422 442</li>
-                        </ul>
+                    <aside class="checkout-v2-card checkout-v2-card--summary udemy-checkout-summary" aria-label="Order summary">
+                        <h2 class="udemy-checkout-summary__heading">Order summary</h2>
+                        <ul class="udemy-checkout-summary__items" id="checkout-cart-items"></ul>
+                        <div class="udemy-checkout-summary__totals">
+                            <div class="udemy-checkout-summary__row">
+                                <span>Subtotal</span>
+                                <span id="checkout-subtotal">—</span>
+                            </div>
+                            <div class="udemy-checkout-summary__row udemy-checkout-summary__row--total">
+                                <span>Total</span>
+                                <strong id="checkout-total">—</strong>
+                            </div>
+                        </div>
+                        <p class="udemy-checkout-summary__help">
+                            Questions? <a href="mailto:admission@kns.edu.sl">admission@kns.edu.sl</a>
+                            · WhatsApp +232 79 422 442
+                        </p>
                     </aside>
                 </div>
             </div>
@@ -154,6 +164,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="cart.js"></script>
     <script src="main.js"></script>
     <script src="checkout.js"></script>
 </body>

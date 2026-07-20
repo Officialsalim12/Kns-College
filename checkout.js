@@ -3,58 +3,156 @@ document.addEventListener("DOMContentLoaded", function () {
     const courseParam = params.get("course");
     const priceParam = params.get("price");
     const amountMinorParam = params.get("amount_minor");
-    const courseDisplay = document.getElementById("checkout-course-display");
-    const priceDisplay = document.getElementById("checkout-price-display");
-    const summaryTitle = document.getElementById("checkout-summary-title");
-    const summaryPrice = document.getElementById("checkout-price-line");
+
     const errBox = document.getElementById("checkout-error");
     const form = document.getElementById("checkoutForm");
     const payBtn = document.getElementById("checkout-pay-btn");
+    const emptyEl = document.getElementById("checkout-empty");
+    const activeEl = document.getElementById("checkout-active");
+    const itemsEl = document.getElementById("checkout-cart-items");
+    const subtotalEl = document.getElementById("checkout-subtotal");
+    const totalEl = document.getElementById("checkout-total");
 
-    let amountMinor =
+    const defaultPriceLabel =
+        typeof CONFIG !== "undefined" && CONFIG.CHECKOUT_DISPLAY_PRICE ? CONFIG.CHECKOUT_DISPLAY_PRICE : "NLe1";
+    const defaultAmountMinor =
         typeof CONFIG !== "undefined" && typeof CONFIG.CHECKOUT_AMOUNT_SLE_MINOR === "number"
             ? CONFIG.CHECKOUT_AMOUNT_SLE_MINOR
             : 100;
-    
-    // Use amount_minor from URL if provided and valid
-    if (amountMinorParam && /^\d+$/.test(amountMinorParam)) {
-        amountMinor = parseInt(amountMinorParam, 10);
-    }
-    
-    const defaultPriceLabel =
-        typeof CONFIG !== "undefined" && CONFIG.CHECKOUT_DISPLAY_PRICE ? CONFIG.CHECKOUT_DISPLAY_PRICE : "NLe1";
 
-    const priceLabel = priceParam ? decodeURIComponent(priceParam) : defaultPriceLabel;
+    /** @type {{ courseKey: string, enrollCourseName: string, displayTitle: string, priceLabel: string, amountSleMinor: number, imageSrc: string }[]} */
+    let cartItems = [];
 
-    let courseDecoded = "";
-    if (courseParam) {
-        courseDecoded = decodeURIComponent(courseParam);
-        document.title = "Checkout — " + courseDecoded + " | KNS College";
+    function resolveCartItems() {
+        if (typeof KNSCart !== "undefined" && KNSCart.getItems) {
+            var fromStore = KNSCart.getItems();
+            if (fromStore && fromStore.length) return fromStore.slice();
+        }
+
+        // Legacy / deep-link: single course via URL (buy-now fallback if cart empty)
+        if (courseParam) {
+            var name = decodeURIComponent(courseParam);
+            var priceLabel = priceParam ? decodeURIComponent(priceParam) : defaultPriceLabel;
+            var amount = defaultAmountMinor;
+            if (amountMinorParam && /^\d+$/.test(amountMinorParam)) {
+                amount = parseInt(amountMinorParam, 10);
+            }
+            var item = {
+                courseKey: name,
+                enrollCourseName: name,
+                displayTitle: name,
+                priceLabel: priceLabel,
+                amountSleMinor: amount,
+                imageSrc: "images/kns-certificate.jpg"
+            };
+            if (typeof KNSCart !== "undefined" && KNSCart.add) {
+                KNSCart.clear();
+                KNSCart.add(item);
+            }
+            return [item];
+        }
+
+        return [];
     }
 
-    if (courseDisplay) {
-        courseDisplay.value = courseDecoded || "";
-    }
-    if (summaryTitle) {
-        summaryTitle.textContent = courseDecoded || "Select a course";
-    }
-    if (priceDisplay) {
-        priceDisplay.value = priceLabel;
-    }
-    if (summaryPrice) {
-        summaryPrice.textContent = priceLabel;
-    }
-    function enrollButtonLabel(price) {
-        return price ? "Enroll for " + price : "Enroll now";
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
     }
 
-    if (payBtn) {
-        payBtn.textContent = enrollButtonLabel(priceLabel);
+    function formatTotalLabel(items) {
+        if (typeof KNSCart !== "undefined" && KNSCart.formatPriceLabel) {
+            return KNSCart.formatPriceLabel(items);
+        }
+        if (!items.length) return "—";
+        if (items.length === 1) return items[0].priceLabel;
+        var minor = items.reduce(function (s, it) {
+            return s + (Number(it.amountSleMinor) || 0);
+        }, 0);
+        var major = (minor / 100).toFixed(minor % 100 === 0 ? 0 : 2);
+        return "NLe" + major;
     }
 
-    if (!courseDecoded && courseDisplay) {
-        courseDisplay.placeholder = "Choose a course from Online courses, then tap Enroll.";
+    function renderSummary() {
+        cartItems = resolveCartItems();
+        var hasItems = cartItems.length > 0;
+
+        if (emptyEl) emptyEl.hidden = hasItems;
+        if (activeEl) activeEl.hidden = !hasItems;
+
+        if (!hasItems) {
+            document.title = "Checkout — Cart empty | KNS College";
+            return;
+        }
+
+        var titleBits = cartItems.map(function (it) {
+            return it.displayTitle;
+        });
+        document.title =
+            "Checkout — " +
+            (titleBits.length === 1 ? titleBits[0] : titleBits.length + " courses") +
+            " | KNS College";
+
+        var totalLabel = formatTotalLabel(cartItems);
+
+        if (itemsEl) {
+            itemsEl.innerHTML = cartItems
+                .map(function (it) {
+                    return (
+                        '<li class="udemy-checkout-line">' +
+                        '<img class="udemy-checkout-line__thumb" src="' +
+                        escapeHtml(it.imageSrc) +
+                        '" alt="" width="64" height="36" loading="lazy">' +
+                        '<div class="udemy-checkout-line__meta">' +
+                        '<p class="udemy-checkout-line__title">' +
+                        escapeHtml(it.displayTitle) +
+                        "</p>" +
+                        '<p class="udemy-checkout-line__instructor">KNS College</p>' +
+                        "</div>" +
+                        '<p class="udemy-checkout-line__price">' +
+                        escapeHtml(it.priceLabel) +
+                        "</p>" +
+                        '<button type="button" class="udemy-checkout-line__remove" data-checkout-remove="' +
+                        escapeHtml(it.courseKey) +
+                        '" aria-label="Remove ' +
+                        escapeHtml(it.displayTitle) +
+                        '">Remove</button>' +
+                        "</li>"
+                    );
+                })
+                .join("");
+        }
+
+        if (subtotalEl) subtotalEl.textContent = totalLabel;
+        if (totalEl) totalEl.textContent = totalLabel;
+        if (payBtn) {
+            payBtn.textContent =
+                cartItems.length === 1
+                    ? "Complete checkout · " + totalLabel
+                    : "Complete checkout · " + cartItems.length + " courses · " + totalLabel;
+        }
     }
+
+    if (itemsEl) {
+        itemsEl.addEventListener("click", function (e) {
+            var btn = e.target && e.target.closest && e.target.closest("[data-checkout-remove]");
+            if (!btn) return;
+            var key = btn.getAttribute("data-checkout-remove");
+            if (typeof KNSCart !== "undefined" && KNSCart.remove) {
+                KNSCart.remove(key);
+            }
+            renderSummary();
+        });
+    }
+
+    document.addEventListener("kns-cart-changed", function () {
+        renderSummary();
+    });
+
+    renderSummary();
 
     function showError(msg) {
         if (!errBox) return;
@@ -66,10 +164,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!errBox) return;
         errBox.textContent = "";
         errBox.hidden = true;
-    }
-
-    function absoluteUrl(relativePath) {
-        return new URL(relativePath, window.location.href).href;
     }
 
     function extractRedirectUrl(payload) {
@@ -97,6 +191,13 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             clearError();
 
+            cartItems = resolveCartItems();
+            if (!cartItems.length) {
+                showError("Your cart is empty. Add a course from Online courses first.");
+                renderSummary();
+                return;
+            }
+
             const fullnameEl = document.getElementById("checkout-fullname");
             const emailEl = document.getElementById("checkout-email");
             const phoneEl = document.getElementById("checkout-phone");
@@ -114,10 +215,6 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!phoneEl || !phoneEl.value.trim()) {
                 if (phoneEl) phoneEl.focus();
                 showError("Please enter your phone number.");
-                return;
-            }
-            if (!courseDecoded) {
-                showError("No course selected. Go back to Online courses and choose Enroll on a course.");
                 return;
             }
 
@@ -141,20 +238,35 @@ document.addEventListener("DOMContentLoaded", function () {
             const successUrl = CONFIG.API_BASE_URL.replace(/\/$/, "") + "/payment-success.html?" + returnQuery;
             const cancelUrl = CONFIG.API_BASE_URL.replace(/\/$/, "") + "/payment-cancelled.html?" + returnQuery;
 
+            const primary = cartItems[0];
+            const clientTotal = cartItems.reduce(function (s, it) {
+                return s + (Number(it.amountSleMinor) || 0);
+            }, 0);
+
             const body = {
                 customerEmail: emailEl.value.trim(),
                 fullName: fullnameEl.value.trim(),
                 phone: phoneEl.value.trim(),
-                courseName: courseDecoded,
-                priceLabel: priceLabel,
+                courseName: primary.enrollCourseName,
+                priceLabel: formatTotalLabel(cartItems),
+                items: cartItems.map(function (it) {
+                    return {
+                        courseName: it.enrollCourseName,
+                        courseKey: it.courseKey,
+                        priceLabel: it.priceLabel,
+                        amountMinor: it.amountSleMinor
+                    };
+                }),
                 returnOrigin: window.location.origin,
                 successUrl: successUrl,
                 cancelUrl: cancelUrl,
                 idempotencyKey: idempotencyKey,
-                amountMinor: amountMinor,
+                amountMinor: clientTotal,
                 currency: CONFIG.CHECKOUT_CURRENCY || "SLE",
-                source: 'checkout' // Explicitly set source for online courses
+                source: "checkout"
             };
+
+            const submitLabel = payBtn ? payBtn.textContent : "Complete checkout";
 
             if (payBtn) {
                 payBtn.disabled = true;
@@ -188,13 +300,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
+                // Keep cart until payment succeeds (cleared on payment-success page)
                 window.location.href = redirectUrl;
             } catch (err) {
                 showError("Connection problem. Check your internet and try again, or contact admissions.");
             } finally {
                 if (payBtn) {
                     payBtn.disabled = false;
-                    payBtn.textContent = enrollButtonLabel(priceLabel);
+                    payBtn.textContent = submitLabel;
                 }
             }
         });
